@@ -3,27 +3,22 @@ import numpy as np
 
 class DepthMap:
 
-    imgLeft, imgRight, disparityMap = None
+    imgLeft, imgRight, disparityMap, depthMap, variance = None
 
-    def __init__(self, img_size, baseline, f, cx, cy, window_size, min_disp, num_disp, block_size):
+    def __init__(self, img_size, baseline, f, cx, cy, window_size=5, min_disp=14, num_disp=16*10, block_size=15):
         self.img_size = img_size
         self.baseline = baseline
         self.f = f
 
-        K = np.array([[f, 0, cx],
+        self.K = np.array([[f, 0, cx],
                     [0, f, cy],
                     [0, 0, 1]])
         R = np.eye(3)
         T = np.array([baseline, 0, 0])
 
         self.R1, self.R2, self.P1, self.P2 = cv.stereoRectify(
-            K, None, K, None, img_size, R, T
+            self.K, None, self.K, None, img_size, R, T
         )
-
-        # window_size = 5
-        # min_disp = 14
-        # num_disp = 16 * 10  # Must be a multiple of 16
-        # block_size = 15
 
         self.stereo = cv.StereoSGBM_create(
             minDisparity=min_disp,
@@ -56,18 +51,36 @@ class DepthMap:
         disparity_normalized = np.uint8(disparity_normalized)
 
         self.disparityMap = disparity_normalized
+
+    def depth(self):
+        disparity_actual = self.disparityMap.astype(np.float32) * (self.stereo.getNumDisparities() / 255.0)
+
+        disparity_actual[disparity_actual <= 0] = np.nan
+
+        self.depthMap = (self.f * self.baseline) / disparity_actual
     
-    def variance():
-        return
-    
+    def variance(self):
+        disparity_actual = self.disparityMap.astype(np.float32) * (self.stereo.getNumDisparities() / 255.0)
+
+        disparity_actual[disparity_actual <= 0] = np.nan
+
+        sigma_d = 1.0
+
+        sigma_Z = (self.f * self.baseline / disparity_actual**2) * sigma_d
+        sigma_Z2 = sigma_Z**2
+
+        self.variance = sigma_Z2
+
     def compute(self, imgLeft, imgRight):
         self.imgLeft = imgLeft
         self.imgRight = imgRight
 
         self.rectify()
         self.disparity()
+        self.depth()
+        self.variance()
 
-        return self.disparityMap
+        return self.depthMap, self.variance
     
 
     
