@@ -100,14 +100,14 @@ class RobotPose:
         """
         self.__directions.append(Observations.DirectionObservation(world_dir, local_dir, var))
 
-    def convert_local_to_world_position(self, local_coords:np.ndarray, var_local_coords:float=0) -> Tuple[np.ndarray, float]:
+    def convert_local_to_world_position(self, local_coords:np.ndarray, var_local_coords:np.ndarray) -> Tuple[np.ndarray, float]:
         """
         Convert position in local robot frame [x,y,z] to world coordinate frame [x,y,z]
         Also computes variance in world coordinate frame
 
         Parameters:
         local_coords (numpy array): 3 element array of [x,y,z] position in local frame [m]
-        var_local_coords (float) (optional): the variance in the local position measurement, default 0 [m^2]
+        var_local_coords (float): the variance in the local position measurement
 
         Returns:
         3 element numpy array: position in world frame [m]
@@ -116,7 +116,7 @@ class RobotPose:
         R = self.__mekf.rotation_matrix()
         world_coords = R @ local_coords + self.__mekf.position()
 
-        local_coords_sqr_mag = np.sum(np.square(local_coords))
+        local_coords_sqr_mag = np.sum(np.square(local_coords), axis=1)
 
         var_world = local_coords_sqr_mag * self.__mekf.orientation_variance() + self.__mekf.position_variance() + var_local_coords
 
