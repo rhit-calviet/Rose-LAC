@@ -106,7 +106,7 @@ class RobotPose:
         Also computes variance in world coordinate frame
 
         Parameters:
-        local_coords (numpy array): 3 element array of [x,y,z] position in local frame [m]
+        local_coords (numpy array): Array of positions in local frame [m] with shape (N, 3)
         var_local_coords (float): the variance in the local position measurement
 
         Returns:
@@ -114,13 +114,13 @@ class RobotPose:
         float: variance of world frame posiiton 
         """
         R = self.__mekf.rotation_matrix()
-        world_coords = R @ local_coords + self.__mekf.position()
+        world_coords = (R @ local_coords.T) + self.__mekf.position()[:,np.newaxis]
 
-        local_coords_sqr_mag = np.sum(np.square(local_coords), axis=1)
+        local_coords_sqr_mag = np.sum(np.square(local_coords.T), axis=0)
 
         var_world = local_coords_sqr_mag * self.__mekf.orientation_variance() + self.__mekf.position_variance() + var_local_coords
 
-        return world_coords, var_world
+        return world_coords.T, var_world
     
     def convert_world_to_local_position(self, world_coords:np.ndarray, var_world_coords:float=0) -> Tuple[np.ndarray, float]:
         """
@@ -136,13 +136,13 @@ class RobotPose:
         float: variance of local frame position
         """
         R = self.__mekf.rotation_matrix()
-        local_coords = R.T @ (world_coords - self.__mekf.position())
+        local_coords = R.T @ (world_coords.T - self.__mekf.position()[:,np.newaxis])
 
-        world_coords_sqr_mag = np.sum(np.square(world_coords - self.__mekf.position()))
+        world_coords_sqr_mag = np.sum(np.square(local_coords), axis=0)
 
         var_local = world_coords_sqr_mag * self.__mekf.orientation_variance() + self.__mekf.position_variance() + var_world_coords
 
-        return local_coords, var_local
+        return local_coords.T, var_local
     
     def convert_local_to_world_vector(self, local_coords:np.ndarray, var_local_coords:float=0) -> Tuple[np.ndarray, float]:
         """
@@ -158,13 +158,13 @@ class RobotPose:
         float: variance of world frame coordinates
         """
         R = self.__mekf.rotation_matrix()
-        world_coords = R @ local_coords
+        world_coords = R @ local_coords.T
 
-        local_coords_sqr_mag = np.sum(np.square(local_coords))
+        local_coords_sqr_mag = np.sum(np.square(local_coords.T), axis=0)
 
         var_world = local_coords_sqr_mag * self.__mekf.orientation_variance() + var_local_coords
 
-        return world_coords, var_world
+        return world_coords.T, var_world
     
     def convert_world_to_local_vector(self, world_coords:np.ndarray, var_world_coords:float=0) -> Tuple[np.ndarray, float]:
         """
@@ -180,13 +180,13 @@ class RobotPose:
         float: variance of local frame coordinates
         """
         R = self.__mekf.rotation_matrix()
-        local_coords = R.T @ world_coords
+        local_coords = R.T @ world_coords.T
 
-        world_coords_sqr_mag = np.sum(np.square(world_coords))
+        world_coords_sqr_mag = np.sum(np.square(world_coords.T), axis=0)
 
         var_local = world_coords_sqr_mag * self.__mekf.orientation_variance() + var_world_coords
 
-        return local_coords, var_local
+        return local_coords.T, var_local
     
     def current_position(self) -> Tuple[np.ndarray, float]:
         """
@@ -208,4 +208,23 @@ class RobotPose:
         """
         return self.__mekf.velocity(), self.__mekf.velocity_variance()
 
-    
+    def current_2D_heading(self) -> Tuple[float, float ,float]:
+        pos = self.current_position()
+        x_local = np.array([1,0,0])
+        R = self.__mekf.rotation_matrix()
+        x_world = R @ x_local
+
+        x = pos[0]
+        y = pos[1]
+        theta = np.atan2(x_world[1], x_world[0])
+
+        return x, y, theta
+
+if __name__ == "__main__":
+    robot = RobotPose(0,0,0,0,0,0)
+    pos = np.random.rand(10,3)
+    var = np.random.rand(10)
+    wpos, wvar = robot.convert_world_to_local_position(pos,var)
+    print(wpos)
+    print()
+    print(wvar)
