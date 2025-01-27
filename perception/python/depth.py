@@ -1,22 +1,31 @@
-import cv2 as cv
 import numpy as np
+import cv2 as cv
 
 class DepthMap:
 
-    imgLeft, imgRight, disparityMap, depthMap, variance = None
+    imgLeft = None
+    imgRight = None
+    disparityMap = None
+    depthMap = None
+    variance = None
+    vectorized = None
 
-    def __init__(self, img_size, baseline, f, cx, cy, window_size=5, min_disp=14, num_disp=16*10, block_size=15):
+    def __init__(self, img_size, baseline, fx, fy, cx, cy, window_size=1, min_disp=0, max_disp=14):
+        
+        num_disp = max_disp*16
+        block_size = window_size
+
         self.img_size = img_size
         self.baseline = baseline
-        self.f = f
+        self.fx = fx
 
-        self.K = np.array([[f, 0, cx],
-                    [0, f, cy],
-                    [0, 0, 1]])
+        self.K = np.array([[fx, 0, cx],
+                            [0, fy, cy],
+                            [0, 0, 1]])
         R = np.eye(3)
         T = np.array([baseline, 0, 0])
 
-        self.R1, self.R2, self.P1, self.P2 = cv.stereoRectify(
+        self.R1, self.R2, self.P1, self.P2, _, _, _ = cv.stereoRectify(
             self.K, None, self.K, None, img_size, R, T
         )
 
@@ -27,12 +36,12 @@ class DepthMap:
             P1=8 * 3 * window_size**2,
             P2=32 * 3 * window_size**2,
             disp12MaxDiff=1,
-            uniquenessRatio=10,
-            speckleWindowSize=100,
-            speckleRange=32,
-            preFilterCap=63,
+            uniquenessRatio=5,
+            speckleWindowSize=2,
+            speckleRange=2,
+            preFilterCap=5,
             mode=cv.STEREO_SGBM_MODE_SGBM_3WAY
-    )
+        )
     
     def rectify(self):
         map1_x, map1_y = cv.initUndistortRectifyMap(self.K, None, self.R1, self.P1, self.img_size, cv.CV_32FC1)
@@ -46,41 +55,79 @@ class DepthMap:
 
     def disparity(self):
         disparity = self.stereo.compute(self.imgLeft, self.imgRight)    
-        
-        disparity_normalized = cv.normalize(disparity, None, alpha=0, beta=255, norm_type=cv.NORM_MINMAX)
-        disparity_normalized = np.uint8(disparity_normalized)
+        disparity[disparity == 0] = 1
 
-        self.disparityMap = disparity_normalized
+        disparity_normalized = cv.normalize(disparity, None, alpha=0, beta=255, norm_type=cv.NORM_MINMAX, dtype=cv.CV_8U)
+
+        self.disparityMapVis = disparity_normalized
+        self.disparityMap = disparity
 
     def depth(self):
         disparity_actual = self.disparityMap.astype(np.float32) * (self.stereo.getNumDisparities() / 255.0)
 
-        disparity_actual[disparity_actual <= 0] = np.nan
-
-        self.depthMap = (self.f * self.baseline) / disparity_actual
+        self.depthMap = (self.fx * self.baseline) / self.disparityMap
     
     def variance(self):
-        disparity_actual = self.disparityMap.astype(np.float32) * (self.stereo.getNumDisparities() / 255.0)
+        # disparity_actual = self.disparityMap.astype(np.float32) * (self.stereo.getNumDisparities() / 255.0)
 
-        disparity_actual[disparity_actual <= 0] = np.nan
+        # disparity_actual[disparity_actual <= 0] = np.nan
 
         sigma_d = 1.0
 
-        sigma_Z = (self.f * self.baseline / disparity_actual**2) * sigma_d
+        sigma_Z = (self.fx * self.baseline / self.disparityMap**2) * sigma_d
         sigma_Z2 = sigma_Z**2
 
         self.variance = sigma_Z2
 
-    def compute(self, imgLeft, imgRight):
-        self.imgLeft = imgLeft
-        self.imgRight = imgRight
+    def vectorize(self):
+        y, x = self.depthMap.shape
 
-        self.rectify()
+        x_coords, y_coords = np.meshgrid(np.arange(x), np.arange(y))
+
+        self.vectorized = np.stack((y_coords, x_coords, self.depthMap, self.variance), axis=-1)
+
+    def compute(self, imgLeft, imgRight):
+        self.imgLeft = cv.imread(imgLeft, cv.IMREAD_GRAYSCALE)
+        self.imgRight = cv.imread(imgRight, cv.IMREAD_GRAYSCALE)
+
+        # stereo_pair = np.hstack((self.imgLeft, self.imgRight))
+        # small_stereo_pair = cv.resize(stereo_pair, None, fx=0.5, fy=0.5, interpolation=cv.INTER_AREA)
+        
+        # cv.imshow("Pre-rectified stereo images", small_stereo_pair)
+        # cv.waitKey(0)
+
+        # self.rectify()
+
+        # stereo_pair = np.hstack((self.imgLeft, self.imgRight))
+        # small_stereo_pair = cv.resize(stereo_pair, None, fx=0.3, fy=0.3, interpolation=cv.INTER_AREA)
+
+        # cv.imshow("Post-rectified stereo images", small_stereo_pair)
+        # cv.waitKey(0)
+
         self.disparity()
+
+        # small_disparity_map = cv.resize(self.disparityMapVis, None, fx=0.5, fy=0.5, interpolation=cv.INTER_AREA)
+        # cv.imshow("Disparity image", small_disparity_map)
+        # cv.waitKey(0)
+
         self.depth()
+
+        small_depth_map = cv.resize(self.depthMap, None, fx=0.5, fy=0.5, interpolation=cv.INTER_AREA)
+        cv.imshow("Depth image", small_depth_map)
+        cv.waitKey(0)
+
         self.variance()
 
-        return self.depthMap, self.variance
+        # small_variance_map = cv.resize(self.variance, None, fx=0.5, fy=0.5, interpolation=cv.INTER_AREA)
+        # cv.imshow("Varance image", small_variance_map)
+        # cv.waitKey(0)
+
+        self.vectorize()
+
+        print("Vector: ", self.vectorized[300, 512])
+
+
+        # return self.depthMap, self.variance
     
 
     
