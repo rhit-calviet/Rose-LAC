@@ -9,27 +9,30 @@ FIDUCIAL_TAG_IDS = {
     "D": [464, 459, 258, 5],
 }
 
+
 def order_tags(tag_info):
     """Order detected tags into [top-left, top-right, bottom-left, bottom-right]."""
-    centers = [np.mean(corners, axis=0) for (corners, _) in tag_info]
-    centers = np.array(centers)
-    
+    centers = np.array([np.mean(corners, axis=1).flatten() for (corners, _) in tag_info])
+
+    # Ensure centers is a proper 2D array of shape (n, 2)
+    centers = np.array(centers, dtype=np.float32)
+
     # Sort by y-coordinate to split into top and bottom rows
-    sorted_indices = np.argsort(centers[:, 1])
-    top_indices = sorted_indices[:2]
-    bottom_indices = sorted_indices[2:]
-    
-    # Sort top and bottom rows by x-coordinate
-    top_indices = top_indices[np.argsort(centers[top_indices, 0])]
-    print(top_indices)
-    bottom_indices = bottom_indices[np.argsort(centers[bottom_indices, 0])]
-    
+    sorted_indices = np.argsort(centers[:, 1])  # Sort by Y values
+    top_indices = sorted_indices[:2].tolist()
+    bottom_indices = sorted_indices[2:].tolist()
+
+    # Ensure sorting keys return scalars
+    top_indices = sorted(top_indices, key=lambda i: centers[i, 0].item())   # Convert to scalar
+    bottom_indices = sorted(bottom_indices, key=lambda i: centers[i, 0].item())
+
     # Convert NumPy indices to Python integers
-    ordered_indices = (
-        [int(idx) for idx in top_indices] + 
-        [int(idx) for idx in bottom_indices]
-    )
+    ordered_indices = [int(idx) for idx in top_indices + bottom_indices]
+    
     return ordered_indices
+
+
+
 
 def detect_fiducial(image):
     """Detect fiducial using OpenCV's AprilTag detector."""
@@ -60,7 +63,7 @@ def detect_fiducial(image):
 
 # Example usage:
 if __name__ == "__main__":
-    image = cv2.imread("C:/Users/calviet/git/Rose-LAC/perception/python/baba.jpg")
+    image = cv2.imread("C:/Users/beaslebf/Projects/Rose-LAC/perception/python/baba.jpg")
     if image is None:
         print("Error: Could not load image.")
     else:
