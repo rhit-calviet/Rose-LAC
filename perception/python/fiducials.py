@@ -4,11 +4,10 @@ import numpy as np
 # Known AprilTag IDs for each fiducial (update with your actual IDs)
 FIDUCIAL_TAG_IDS = {
     "A": [243, 71, 462, 37],   # Example IDs for Fiducial A
-    "B": [0, 3, 2, 1],   # Example IDs for Fiducial B
+    "B": [0, 3, 2, 1],         # Example IDs for Fiducial B
     "C": [10, 11, 8, 9],
     "D": [464, 459, 258, 5],
 }
-
 
 def order_tags(tag_info):
     """Order detected tags into [top-left, top-right, bottom-left, bottom-right]."""
@@ -30,9 +29,6 @@ def order_tags(tag_info):
     ordered_indices = [int(idx) for idx in top_indices + bottom_indices]
     
     return ordered_indices
-
-
-
 
 def detect_fiducial(image):
     """Detect fiducial using OpenCV's AprilTag detector."""
@@ -58,14 +54,34 @@ def detect_fiducial(image):
     # Match against known configurations
     for fiducial, expected_ids in FIDUCIAL_TAG_IDS.items():
         if ordered_ids == expected_ids:
-            return fiducial
-    return None
+            return fiducial, tag_info
+    return None, tag_info
+
+def calculate_tag_centers(tag_info):
+    """Calculate the center pixel coordinates of each detected tag."""
+    centers = []
+    for corners, tag_id in tag_info:
+        # corners is an array of shape (1, 4, 2); we need to reshape it to (4, 2)
+        corners = corners.reshape(4, 2)
+        # Calculate the center as the average of the corner points
+        center_x = int(np.mean(corners[:, 0]))
+        center_y = int(np.mean(corners[:, 1]))
+        centers.append((tag_id, (center_x, center_y)))
+    return centers
 
 # Example usage:
 if __name__ == "__main__":
-    image = cv2.imread("C:/Users/beaslebf/Projects/Rose-LAC/perception/python/baba.jpg")
+    image = cv2.imread("C:/Users/calviet/git/Rose-LAC/perception/python/baba.jpg")
     if image is None:
         print("Error: Could not load image.")
     else:
-        fiducial = detect_fiducial(image)
-        print(f"Detected Fiducial: {fiducial}")
+        fiducial, tag_info = detect_fiducial(image)
+        if fiducial:
+            print(f"Detected Fiducial: {fiducial}")
+        else:
+            print("No known fiducial detected.")
+        
+        # Calculate and print the center coordinates of each detected tag
+        centers = calculate_tag_centers(tag_info)
+        for tag_id, (center_x, center_y) in centers:
+            print(f"Tag ID {tag_id}: Center at ({center_x}, {center_y})")
