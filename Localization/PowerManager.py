@@ -2,9 +2,15 @@ class PowerManager:
     def __init__(self, velocity):
        
         # Initialize the PowerManager with battery capacity, base consumption, max speed, and drive power.
+        self.cameraConsumption = 3
+        self.lightConsumption = 9.8
+        self.wheelConsumption = 8
         self.battery_capacity = 283
-        self.base_consumption = 10.15 + (8*3) + 8*(9.8)
-        self.moving_consumption = 60*4
+        self.comptutationConsuption = 8 #constant
+        self.nonConsumption = 2 #constant
+        self.imuConsumption = 0.5 #constant
+        self.base_consumption = self.comptutationConsuption + self.nonConsumption + self.imuConsumption + (8*self.cameraConsumption) + (8*self.lightConsumption)
+        self.moving_consumption = self.wheelConsumption*4
         self.velocity = velocity
 
     def get_soc(self, current_power):
@@ -29,7 +35,7 @@ class PowerManager:
             energy_needed = self.energy_required_to_return(distance_to_lander, dynamic_load)
         
         else:
-            energy_needed = self.energy_required_to_return(27, dynamic_load)
+            energy_needed = self.energy_required_to_return(9, dynamic_load)
 
         # Compute dynamic threshold
         safe_return_threshold = ((energy_needed / self.battery_capacity) * 100) + 0.1
