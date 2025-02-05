@@ -208,8 +208,20 @@ class RobotPose:
         """
         return self.__mekf.velocity(), self.__mekf.velocity_variance()
 
-    def current_2D_heading(self) -> Tuple[float, float ,float]:
-        pos = self.current_position()
+    def current_2D_pose(self) -> Tuple[Tuple[float, float, float], Tuple[float, float]]:
+        """
+        Get current robot 2D position [m] and orientation [rad] in world coordinates
+
+        Returns:
+        (x, y, theta), (position_variance, orientation variance)
+
+        x (float): current x position [m] in world coordinates
+        y (float): current y position [m] in world coordinates
+        theta (float): current rotation [rad] around z axis from world axis to local axis
+        position_variance (float): the variance in the current position measurement [m]
+        orientation_variance (float): the variance in the current orientation measurement [rad]
+        """
+        pos, pos_var = self.current_position()
         x_local = np.array([1,0,0])
         R = self.__mekf.rotation_matrix()
         x_world = R @ x_local
@@ -218,7 +230,7 @@ class RobotPose:
         y = pos[1]
         theta = np.atan2(x_world[1], x_world[0])
 
-        return x, y, theta
+        return (x, y, theta), (pos_var, self.__mekf.orientation_variance())
 
 if __name__ == "__main__":
     robot = RobotPose(0,0,0,0,0,0)
