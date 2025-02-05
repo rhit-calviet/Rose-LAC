@@ -69,19 +69,14 @@ def calculate_tag_centers(tag_info):
         centers.append((tag_id, (center_x, center_y)))
     return centers
 
-# Example usage:
-if __name__ == "__main__":
-    image = cv2.imread("C:/Users/calviet/git/Rose-LAC/perception/python/baba.jpg")
+
+def fiducials(path):
+    image = cv2.imread(path)
     if image is None:
         print("Error: Could not load image.")
-    else:
-        fiducial, tag_info = detect_fiducial(image)
-        if fiducial:
-            print(f"Detected Fiducial: {fiducial}")
-        else:
-            print("No known fiducial detected.")
-        
-        # Calculate and print the center coordinates of each detected tag
-        centers = calculate_tag_centers(tag_info)
-        for tag_id, (center_x, center_y) in centers:
-            print(f"Tag ID {tag_id}: Center at ({center_x}, {center_y})")
+        return []
+    
+    fiducial, tag_info = detect_fiducial(image)
+    centers = calculate_tag_centers(tag_info)
+    
+    return fiducial, centers
