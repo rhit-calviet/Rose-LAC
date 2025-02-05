@@ -38,10 +38,35 @@ class Estimator:
         self.robot.add_direction_observation(world_dir, local_dir, var)
 
     def update(self, gyro:np.ndarray, accel:np.ndarray, lin_speed:float, ang_speed:float):
+        """
+        Update the robot state estimate and the elevation map with the new observations.
+        This should be called once every update cycle.
+
+        Parameters:
+        Observations (Observations): the new observations
+
+        Returns:
+        None
+        """
         self.robot.update(gyro, accel, lin_speed, ang_speed)
         points_world, var_world = self.robot.convert_local_to_world_position(self.points, self.var)
         self.map.update(points_world, var_world)
         
+    def current_2D_pose(self):
+        """
+        Get current robot 2D position [m] and orientation [rad] in world coordinates
 
+        Returns:
+        (x, y, theta), (position_variance, orientation variance)
+
+        x (float): current x position [m] in world coordinates
+        y (float): current y position [m] in world coordinates
+        theta (float): current rotation [rad] around z axis from world axis to local axis
+        position_variance (float): the variance in the current position measurement [m]
+        orientation_variance (float): the variance in the current orientation measurement [rad]
+        """
+        return self.robot.current_2D_pose()
     
+    def current_2D_velocity(self):
+        pass
         

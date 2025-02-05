@@ -3,7 +3,7 @@ from PID_Controller import Integrator_Plant_PID_Controller
 
 class Controller:
     def __init__(self, dt:float, settling_time:float, v_min:float, v_max:float, w_max:float):
-        time_constant = settling_time / 6
+        time_constant = settling_time / 4
         self.linear = Integrator_Plant_PID_Controller(settling_time, time_constant, dt, v_min, v_max)
         self.angular = Integrator_Plant_PID_Controller(settling_time, time_constant, dt, -w_max, w_max)
 
