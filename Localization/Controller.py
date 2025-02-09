@@ -2,10 +2,15 @@ import numpy as np
 from PID_Controller import Integrator_Plant_PID_Controller
 
 class Controller:
-    def __init__(self, dt:float, bandwidth:float, v_min:float, v_max:float, w_max:float):
-        time_constant = 4 / bandwidth
-        self.linear = Integrator_Plant_PID_Controller(bandwidth, time_constant, dt, v_min, v_max)
-        self.angular = Integrator_Plant_PID_Controller(bandwidth, time_constant, dt, -w_max, w_max)
+    def __init__(self, dt:float, v_min:float, v_max:float, w_max:float):
+        # Control time constant (Two sample updates)
+        time_constant = 2*dt
+        # Control bandwidth (Nyquist frequency)
+        bandwidth = 4 * np.pi/dt
+
+        # Create PID Controllers
+        self.linear = Integrator_Plant_PID_Controller(bandwidth, time_constant, dt)
+        self.angular = Integrator_Plant_PID_Controller(bandwidth, time_constant, dt)
 
         self.dt = dt
         self.xd_prev = 0
@@ -17,12 +22,16 @@ class Controller:
         self.w_max = w_max
         self.w_min = -w_max
 
-    def compute_control_intputs(self, x, y, theta, xd, yd):
+    def compute_control_inputs(self, x, y, theta, xd, yd):
         # Compute feedforward control
         xd_dot = (xd - self.xd_prev) / self.dt
         yd_dot = (yd - self.yd_prev) / self.dt
 
-        thetad = np.atan2(yd_dot, xd_dot)
+        if abs(xd_dot) > 0 or abs(yd_dot > 0):
+            thetad = np.atan2(yd_dot, xd_dot)
+        else:
+            thetad = self.thetad_prev
+
         thetad_dot = (thetad - self.thetad_prev) / self.dt
         
         self.xd_prev = xd
@@ -53,9 +62,9 @@ class Controller:
         while etheta < -np.pi:
             etheta += 2*np.pi
 
-        # Calculate control inputs
-        v = self.linear.output(ed) + vff
-        w = self.angular.output(etheta) + wff
+        # Calculate control inputs: Feedback Control + Feedforward Control
+        v = self.linear.compute_input(ed) + vff
+        w = self.angular.compute_input(etheta) + wff
 
         # Saturate
         if v > self.v_max:

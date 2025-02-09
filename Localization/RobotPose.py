@@ -23,7 +23,7 @@ class RobotPose:
         # Initial Position
         x_pos0 = np.array([x0, y0, z0], dtype=np.float64)
         # Standard Deviation of initial position [m]
-        sx0 = 0.01
+        sx0 = 0
 
         # Initial Linear Velocity [m/s]
         v0 = np.zeros(3, dtype=np.float64)
