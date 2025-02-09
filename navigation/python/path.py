@@ -185,7 +185,6 @@ class GeneratePath:
             new_path = self.smooth_rover_path(new_path)
             self.smooth_path.extendleft(reversed(new_path))
             self.smooth_path = self.smooth_rover_path(self.smooth_path)
-            self.visualize_path()
             print("Path update completed.")
 
     def smooth_rover_path(self, path_deque, smoothing_factor=15, num_points=10000):
