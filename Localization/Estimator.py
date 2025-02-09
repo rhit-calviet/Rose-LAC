@@ -1,7 +1,7 @@
 import numpy as np
 from RobotPose import RobotPose
 from ElevationMap import ElevationMap
-
+from typing import Tuple
 
 class Estimator:
     def __init__(self, x0:float, y0:float, z0:float, roll0:float, pitch0:float, yaw0:float):
@@ -52,7 +52,7 @@ class Estimator:
         points_world, var_world = self.robot.convert_local_to_world_position(self.points, self.var)
         self.map.update(points_world, var_world)
         
-    def current_2D_pose(self):
+    def current_2D_pose(self) -> Tuple[Tuple[float, float, float], Tuple[float, float]]:
         """
         Get current robot 2D position [m] and orientation [rad] in world coordinates
 
@@ -66,7 +66,4 @@ class Estimator:
         orientation_variance (float): the variance in the current orientation measurement [rad]
         """
         return self.robot.current_2D_pose()
-    
-    def current_2D_velocity(self):
-        pass
         

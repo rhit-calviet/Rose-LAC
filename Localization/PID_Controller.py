@@ -1,8 +1,8 @@
 import numpy as np
 
 class Integrator_Plant_PID_Controller:
-    def __init__(self, settling_time:float, time_constant:float, dt:float, u_min:float, u_max:float):
-        pole = 4 / settling_time
+    def __init__(self, bandwidth:float, time_constant:float, dt:float, u_min:float, u_max:float):
+        pole = bandwidth
         self.kd = 3 * pole * time_constant - 1
         self.kp = 3 * pole * pole * time_constant
         self.ki = pole * pole * pole * time_constant
