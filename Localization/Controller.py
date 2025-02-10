@@ -22,7 +22,7 @@ class Controller:
         self.w_max = w_max
         self.w_min = -w_max
 
-    def compute_control_inputs(self, x, y, theta, xd, yd):
+    def compute_control_inputs_position(self, x:float, y:float, theta:float, xd:float, yd:float):
         # Compute feedforward control
         xd_dot = (xd - self.xd_prev) / self.dt
         yd_dot = (yd - self.yd_prev) / self.dt
@@ -39,7 +39,7 @@ class Controller:
         self.thetad_prev = thetad
 
         # Feedforward control inputs
-        vff = np.sqrt(xd_dot*xd_dot + yd_dot*yd_dot)
+        vff = xd_dot * np.cos(theta) + yd_dot * np.sin(theta)
         wff = thetad_dot
 
         # Compute feedback control
@@ -52,6 +52,54 @@ class Controller:
         
         # Calculate Error in orientation to move toward target position
         etheta = thetad_target_pos - theta
+
+        # Calculate Error in position (possible movement direction projected desired direction)
+        ed = d * np.cos(etheta)
+        
+        # Make error in range [-pi, pi]
+        while etheta > np.pi:
+            etheta -= 2*np.pi
+        while etheta < -np.pi:
+            etheta += 2*np.pi
+
+        # Calculate control inputs: Feedback Control + Feedforward Control
+        v = self.linear.compute_input(ed) + vff
+        w = self.angular.compute_input(etheta) + wff
+
+        # Saturate
+        if v > self.v_max:
+            v = self.v_max
+        if v < self.v_min:
+            v = self.v_min
+        if w > self.w_max:
+            w = self.w_max
+        if w < self.w_min:
+            w = self.w_min
+
+        return v,w
+    
+    def compute_control_inputs_angle(self, x:float, y:float, theta:float, xd:float, yd:float, thetad:float):
+        # Compute feedforward control
+        xd_dot = (xd - self.xd_prev) / self.dt
+        yd_dot = (yd - self.yd_prev) / self.dt
+
+        thetad_dot = (thetad - self.thetad_prev) / self.dt
+        
+        self.xd_prev = xd
+        self.yd_prev = yd
+        self.thetad_prev = thetad
+
+        # Feedforward control inputs
+        vff = xd_dot * np.cos(theta) + yd_dot * np.sin(theta)
+        wff = thetad_dot
+
+        # Compute feedback control
+        dx = xd - x
+        dy = yd - y
+        d = np.sqrt(dx*dx + dy*dy)
+        
+        # Calculate Error in orientation to move toward target position
+        etheta = thetad - theta
 
         # Calculate Error in position (possible movement direction projected desired direction)
         ed = d * np.cos(etheta)

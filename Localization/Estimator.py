@@ -4,14 +4,25 @@ from ElevationMap import ElevationMap
 from typing import Tuple
 
 class Estimator:
-    def __init__(self, x0:float, y0:float, z0:float, roll0:float, pitch0:float, yaw0:float):
+    def __init__(self, x0:float, y0:float, z0:float, roll0:float, pitch0:float, yaw0:float, map_size:float, cell_size:float, num_map_subcells:int, map_buffer:int, rock_var_threshold):
         self.robot = RobotPose(x0, y0, z0, roll0, pitch0, yaw0)
-        self.map = ElevationMap(-27/2, -27/2, 0.15, 180, 3, 4)
+        x_min = -map_size / 2
+        y_min = -map_size / 2
+        num_cells = np.round(map_size/cell_size)
+        self.map = ElevationMap(x_min, y_min, cell_size, num_cells, num_map_subcells, map_buffer)
+        self.rock_var_threshold = rock_var_threshold
 
         self.points = None
         self.var = None
 
     def add_elevation_points(self, points:np.ndarray, variance:np.ndarray):
+        """
+        Update elevation map with points
+
+        Parameters:
+        points: (N,3) [x,y,z] points in 3D space
+        var: (N) variance of each point measurement
+        """
         self.points = np.concatenate((self.points, points), axis=0)
         self.var = np.concatenate((self.var, variance), axis=0)
 
@@ -67,3 +78,22 @@ class Estimator:
         """
         return self.robot.current_2D_pose()
         
+    def get_cell_info(self, x_index:int, y_index:int, alpha:float=0.05) -> Tuple[float, float, float, float]:
+        """
+            Get information for elevation cell
+
+            Parameters:
+            x_index: (int) cell x index
+            y_index: (int) cell y index
+            rock_var_thresh: (float) variance threshold of a cell to detect a rock
+            alpha: (float) Confidence interval p value
+
+            Returns:
+            elevation, rock, elevation uncertainty, rock uncertainty
+
+            elevation (float): elevation of the cell [m]
+            rock (boolean): True is the cell a rock
+            elevation uncertainty (float): relative uncertainty in the elevation
+            rock uncertainty (float): relative uncertainty in the rock estimate
+        """
+        return self.get_cell_info(x_index,y_index,self.rock_var_threshold, alpha)
