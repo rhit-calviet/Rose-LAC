@@ -70,12 +70,7 @@ def calculate_tag_centers(tag_info):
     return centers
 
 
-def fiducials(path):
-    image = cv2.imread(path)
-    if image is None:
-        print("Error: Could not load image.")
-        return []
-    
+def fiducials(image):
     fiducial, tag_info = detect_fiducial(image)
     centers = calculate_tag_centers(tag_info)
     
