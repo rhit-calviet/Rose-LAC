@@ -5,7 +5,7 @@ class Integrator_Plant_PID_Controller:
         w_samp = 2*np.pi/dt
         wn_max = w_samp / 5
         wn = min(wn_max,wn)
-        self.kd = 2*np.sqrt(wn)
+        self.kd = 25 / zeta
         self.kp = (1+self.kd)*(2*zeta*wn)
         self.ki = (1+self.kd)*wn*wn
         self.dt = dt
