@@ -5,17 +5,18 @@ from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 
 class ElevationMap:
-    def __init__(self, x_min:float, y_min:float, cell_size:float, num_cells:int, num_subcells:int, buffer_size:float):
+    def __init__(self, x_min:float, y_min:float, cell_size:float, num_cells:int, num_subcells:int, buffer_size:int):
         self.__sub_cell_size = cell_size / num_subcells
         self.__num_buffer_cells = round(buffer_size / self.__sub_cell_size)
         self.__x_min = x_min - self.__num_buffer_cells * self.__sub_cell_size
         self.__y_min = y_min - self.__num_buffer_cells * self.__sub_cell_size
         self.__num_cells = num_cells
+        self.__num_subcells = num_subcells
         self.__num_total_sub_cells = num_cells*num_subcells + 2*self.__num_buffer_cells
         self.__x_max = x_min + cell_size * self.__num_total_sub_cells
         self.__y_max = y_min + cell_size * self.__num_total_sub_cells
 
-        self.__std_threshold = 10
+        self.__std_threshold = self.__sub_cell_size * 0.5
 
         self.__mean_elevation = np.zeros((self.__num_total_sub_cells, self.__num_total_sub_cells))
         self.__var_elevation = np.full_like(self.__mean_elevation, np.inf)
@@ -126,7 +127,7 @@ class ElevationMap:
         n_eff = np.divide(np.square(self.__weight_sum), self.__weight_sum2, out=np.zeros_like(self.__weight_sum), where=self.__weight_sum2 > 0)
         return 2 * np.divide(np.square(self.variance()), n_eff - 1, out=np.full_like(self.__weight_sum, np.inf), where=n_eff > 1)
 
-    def elevation(self, alpha=0.05) -> np.ndarray:
+    def elevation(self, alpha=0.05):
         dof = self.__num_obs - 1
         dof[dof < 1] = 1
         # Standard Error of mean
@@ -160,6 +161,54 @@ class ElevationMap:
         pop_variance = np.multiply(correction_factor, self.__var_elevation, out=np.full_like(self.__var_elevation, np.inf), where=correction_factor > 0)
 
         return pop_variance, ci_lower, ci_upper
+
+    def get_cell_info(self, x:int, y:int, rock_var_thresh:float, alpha:float=0.05):
+        """
+            Get information for elevation cell
+
+            Parameters:
+            x: (int) cell x index
+            y: (int) cell y index
+            rock_var_thresh: (float) variance threshold of a cell to detect a rock
+            alpha: (float) Confidence interval p value
+
+            Returns:
+            elevation (float): elevation of the cell [m]
+            rock (boolean): True is the cell a rock
+            elevation uncertainty (float): relative uncertainty in the elevation
+            rock uncertainty (float): relative uncertainty in the rock estimate
+        """
+        min_offset = self.__num_buffer_cells
+        max_offset = self.__num_buffer_cells + self.__num_subcells
+
+        elev, elev_min, elev_max = self.elevation(alpha)
+        elev_var, elev_var_min, elev_var_max = self.elevation_variance(alpha)
+        elev_uncert = self.elevation_uncertainty()
+        elev_var_uncert = self.variance_uncertainty()
+
+        elev = elev[(min_offset+x):(max_offset+x), (min_offset+y):(max_offset+y)]
+        elev_min = elev_min[(min_offset+x):(max_offset+x), (min_offset+y):(max_offset+y)]
+        elev_max = elev_max[(min_offset+x):(max_offset+x), (min_offset+y):(max_offset+y)]
+
+        elev_var = elev_var[(min_offset+x):(max_offset+x), (min_offset+y):(max_offset+y)]
+        elev_var_min = elev_var_min[(min_offset+x):(max_offset+x), (min_offset+y):(max_offset+y)]
+        elev_var_max = elev_var_max[(min_offset+x):(max_offset+x), (min_offset+y):(max_offset+y)]
+
+        elev_uncert = elev_uncert[(min_offset+x):(max_offset+x), (min_offset+y):(max_offset+y)]
+        elev_var_uncert = elev_var_uncert[(min_offset+x):(max_offset+x), (min_offset+y):(max_offset+y)]
+        
+        w = np.reciprocal(elev_var, out=np.zeros_like(elev_var), where=elev_var>0)
+
+        weighted_sum = np.sum(w * elev)
+        sum_weight = np.sum(w)
+        if sum_weight > 0:
+            elevation = weighted_sum / sum_weight
+        else:
+            elevation = 0
+
+        rock = np.any(elev_var_min > rock_var_thresh)
+
+        return elevation, rock, np.max(elev_uncert), np.max(elev_var_uncert)
 
 
 if __name__ == "__main__":

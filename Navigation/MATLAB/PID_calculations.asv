@@ -1,0 +1,23 @@
+clear
+close all
+clc
+
+
+syms kd wn zeta w real
+
+kp = 2*zeta*wn*(1+kd);
+ki = wn*wn*(1+kd);
+
+s = w*1j;
+
+G = (kd*s^2 + kp*s + ki) / ((1+kd)*s^2 + kp*s + ki);
+
+G = simplify(G);
+
+phase = atan(imag(G)/real(G));
+
+simplify(phase);
+
+dphase = diff(phase,w);
+
+sol

@@ -207,13 +207,24 @@ class RobotPose:
         float: variance of world frame velocity
         """
         return self.__mekf.velocity(), self.__mekf.velocity_variance()
+    
+    def current_angular_velocity(self) -> Tuple[np.ndarray, float]:
+        """
+        Get current robot angular velocity [rad] in world coordinates
 
+        Returns:
+        3 element numpy array: robot velocity in world frame
+        float: variance of world frame velocity
+        """
+        return self.__mekf.angular_velocity(), self.__mekf.angular_velocity_variance()
+
+    
     def current_2D_pose(self) -> Tuple[Tuple[float, float, float], Tuple[float, float]]:
         """
         Get current robot 2D position [m] and orientation [rad] in world coordinates
 
         Returns:
-        (x, y, theta), (position_variance, orientation variance)
+        (x, y, theta), (position_variance, orientation_variance)
 
         x (float): current x position [m] in world coordinates
         y (float): current y position [m] in world coordinates
@@ -231,6 +242,27 @@ class RobotPose:
         theta = np.atan2(x_world[1], x_world[0])
 
         return (x, y, theta), (pos_var, self.__mekf.orientation_variance())
+
+    def current_2D_velocity(self) -> Tuple[Tuple[float, float, float], Tuple[float, float]]:
+        """
+        Get current robot 2D velocity [m/s] and angular velocity [rad/s] in world coordinates
+
+        Returns:
+        (vx, vy, wz), (v_variance, w_variance)
+
+        vx (float): current x velocity [m/s] in world coordinates
+        vy (float): current y velocity [m/s] in world coordinates
+        wz (float): current angular velocity [rad/s] around world z axis
+        v_variance (float): the variance in the current velocity measurement [m/s]
+        w_variance (float): the variance in the current angular velocity measurement [rad/s]
+        """
+        v, v_var = self.current_velocity()
+        w, w_var = self.current_angular_velocity()
+
+        vx = v[0]
+        vy = v[1]
+        wz = w[3]
+        return (vx, vy, wz), (v_var, w_var)
 
 if __name__ == "__main__":
     robot = RobotPose(0,0,0,0,0,0)

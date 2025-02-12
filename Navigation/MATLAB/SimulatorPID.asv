@@ -1,0 +1,24 @@
+%% PID
+clear
+close all
+clc
+
+%% Run
+wn = 3;
+zeta = 1;
+
+for kd = [0,0.1,0.2]
+kp = (1+kd)*(2*zeta*wn);
+ki = (1+kd)*wn*wn;
+
+s = tf('s');
+C = kp + kd*s + ki/s;
+P = 1/s;
+
+Gcl = (C*P)/(1+C*P);
+
+step(Gcl);
+hold on
+stepinfo(Gcl)
+
+end
