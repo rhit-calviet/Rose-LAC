@@ -39,7 +39,7 @@ class TestAgent(AutonomousAgent):
         cell_size = self.geomap.get_cell_size()
 
         self.estimator = Estimator(tf0.location.x, tf0.location.y, tf0.location.z, tf0.rotation.pitch, tf0.rotation.roll, tf0.rotation.yaw, map_size, cell_size, num_map_subcells=2, map_buffer=4)
-        self.controller = Controller(dt=0.05, v_min=-0.2, v_max=0.48, w_max=4.13)
+        self.controller = Controller(dt=0.05, v_min=-0.2, v_max=0.48, w_max=4.13, zeta_v=2, wn_v=2.5, zeta_w=2, wn_w=2.5)
         self.path_generator = GeneratePath(map_size, map_size, cell_size, velocity=0.2)
 
         self.set_front_arm_angle(np.pi/3)
@@ -111,14 +111,16 @@ class TestAgent(AutonomousAgent):
 
         # Get Current Position
         (x_curr, y_curr, theta_curr), (var_pos, var_ang) = self.estimator.current_2D_pose()
+        (xdot_curr, ydot_curr, thetadot_curr), (var_vel, var_ang_vel) = self.estimator.current_2D_velocity()
 
         # TODO: Compute Navigation
         elev, rock, elev_uncert, rock_uncert = self.estimator.get_cell_info(x_index, y_index)
         x_desired = 0
         y_desired = 0
+        theta_desired = 0
 
         # Compute Control Inputs
-        v,w = self.controller.compute_control_inputs_position(x_curr, y_curr, theta_curr, x_desired, y_desired)
+        v,w = self.controller.compute_control_inputs(x_curr, y_curr, theta_curr, xdot_curr, ydot_curr, thetadot_curr, x_desired, y_desired, theta_desired, angle_control=False)
         control = carla.VehicleVelocityControl(v, w)
 
         if mission_time > 10000:

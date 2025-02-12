@@ -1,34 +1,32 @@
-%% Control Law
-%
-
-%% Setup
+%% PID
 clear
 close all
 clc
 
-%% Parameter
-ts = 2;
-damping = 2;
+%% Run
 
-%% Control Parameters
-tau = ts*(1+damping)/12;
-p = 4/ts;
+f_samp = 20;
+w_samp = f_samp*2*pi;
 
-kp = 3*tau*p^2;
-kd = 3*tau*p - 1;
-ki = tau*p^3;
+speed = 0.1;
 
-%% Control Law
+wn = speed*w_samp/5;
+zeta = 2;
+
+tau_filt = 1/wn;
+
+kd = 2*sqrt(wn);
+kp = (1+kd)*(2*zeta*wn);
+ki = (1+kd)*wn*wn;
+
 s = tf('s');
-C = (kp + kd*s + ki/s) / (tau*s + 1);
-
-%% Plant
+C = kp + kd*s/(tau_filt*s+1) + ki/s;
 P = 1/s;
 
-%% Open-Loop
-Gol = P*C;
+Gcl = (C*P)/(1+C*P);
 
-%% Closed-Loop
-Gcl = P*C / (1 + P*C);
+% Add feedforward
 
+figure
+step(Gcl);
 stepinfo(Gcl)

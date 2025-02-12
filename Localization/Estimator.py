@@ -78,6 +78,21 @@ class Estimator:
         """
         return self.robot.current_2D_pose()
         
+    def current_2D_velocity(self) -> Tuple[Tuple[float, float, float], Tuple[float, float]]:
+        """
+        Get current robot 2D velocity [m/s] and angular velocity [rad/s] in world coordinates
+
+        Returns:
+        (vx, vy, wz), (v_variance, w_variance)
+
+        vx (float): current x velocity [m/s] in world coordinates
+        vy (float): current y velocity [m/s] in world coordinates
+        wz (float): current angular velocity [rad/s] around world z axis
+        v_variance (float): the variance in the current velocity measurement [m/s]
+        w_variance (float): the variance in the current angular velocity measurement [rad/s]
+        """
+        return self.robot.current_2D_velocity()
+
     def get_cell_info(self, x_index:int, y_index:int, alpha:float=0.05) -> Tuple[float, float, float, float]:
         """
             Get information for elevation cell

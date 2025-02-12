@@ -7,11 +7,19 @@ close all
 clc
 
 %% Parameters
-kp_v = 5;
-ki_v = 0.1;
+f_samp = 20;
+w_samp = f_samp*2*pi;
 
-kp_w = 5;
-ki_w = 0.1;
+speed = 0.1;
+
+wn = speed*w_samp/5;
+zeta = 1;
+
+tau_filt = 1/wn;
+
+kd = 2*sqrt(wn);
+kp = (1+kd)*(2*zeta*wn);
+ki = (1+kd)*wn*wn;
 
 I_v = 0;
 I_w = 0;
@@ -63,10 +71,10 @@ for k                       = 1:stop_time/Ts
 
     ed = dist * cos(etheta);
 
-    I_v = ed* Ts;
-    I_w = etheta * Ts;
+    I_v = I_v + ed* Ts;
+    I_w = I_w + etheta * Ts;
 
-    u = [ed*kp_v + I_v*ki_v + randn()*0.02; etheta*kp_w + I_w*ki_w + randn()*0.05];
+    u = [ed*kp + I_v*ki + randn()*0.02; etheta*kp + I_w*ki + randn()*0.05];
 
     if abs(u(1)) > 0.48
         u(1) = 0.48 * sign(u(1));
