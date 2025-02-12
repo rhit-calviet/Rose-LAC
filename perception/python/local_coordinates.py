@@ -1,24 +1,15 @@
 import cv2
 import numpy as np
 from detect_fiducials import *
+from Localization.InitialPosition import *
 
-# Known tag coordinates (in lander's local frame F_L)
-TAG_COORDINATES_LANDER = {
-    243: (0.691, -1.033, 0.894), 71: (1.033, -0.691, 0.894),
-    462: (0.691, -1.033, 0.412), 37: (1.033, -0.691, 0.412),
-    0: (1.033, 0.691, 0.894), 3: (0.691, 1.033, 0.894),
-    2: (1.033, 0.691, 0.412), 1: (0.691, 1.033, 0.412),
-    10: (-0.691, 1.033, 0.894), 11: (-1.033, 0.691, 0.894),
-    8: (-0.691, 1.033, 0.412), 9: (-1.033, 0.691, 0.412),
-    464: (-1.033, -0.691, 0.894), 459: (-0.691, -1.033, 0.894),
-    258: (-1.033, -0.691, 0.412), 5: (-0.691, -1.033, 0.412)
-}
 
 class LocalCoordinates:
     def __init__(self, image):
         self.image = image
         self.h, self.w = image.shape[:2]
-
+        self.FIDUCIAL_TAG_COORDINATES = get_fiducial_world_coordinates()
+        
 
     def get_coordinates(self):
         # Get detected fiducials
@@ -32,9 +23,9 @@ class LocalCoordinates:
         object_points = []
         image_points = []
         for tag_id, (x_pixel, y_pixel) in centers:
-            if tag_id in TAG_COORDINATES_LANDER:
+            if tag_id in self.FIDUCIAL_TAG_COORDINATES:
                 # Use fiducial coordinates directly (assume they are in global frame)
-                global_point = TAG_COORDINATES_LANDER[tag_id]
+                global_point = self.FIDUCIAL_TAG_COORDINATES[tag_id]
                 object_points.append(global_point)
                 image_points.append([x_pixel, y_pixel])
 
