@@ -23,7 +23,7 @@ class Integrator_Plant_PID_Controller:
 
     def compute_input(self, error:float, error_dot:float, reference_dot:float):
         # Derivative Error
-        self.d_error = self.alpha * self.d_error + (1-self.alpha)*error_dot
+        self.d_error = (1-self.alpha) * self.d_error + (self.alpha)*error_dot
         # Integral Error
         self.integral_error += self.dt * error
         if self.integral_error > self.integral_max:

@@ -26,8 +26,8 @@ class Controller:
         xdot_des = (x_des - self.x_des_prev) / self.dt
         ydot_des = (y_des - self.y_des_prev) / self.dt
         # Low pass filter
-        self.xdot_des = self.alpha * self.xdot_des + (1-self.alpha)*xdot_des
-        self.ydot_des = self.alpha * self.ydot_des + (1-self.alpha)*ydot_des
+        self.xdot_des = (1-self.alpha) * self.xdot_des + (self.alpha)*xdot_des
+        self.ydot_des = (1-self.alpha) * self.ydot_des + (self.alpha)*ydot_des
         xdot_des = self.xdot_des
         ydot_des = self.ydot_des
 
@@ -40,7 +40,7 @@ class Controller:
 
         thetadot_des = (theta_des - self.theta_des_prev) / self.dt
         # Low pass filter
-        self.thetadot_des = self.alpha * self.theta_des_prev + (1 - self.alpha) * thetadot_des
+        self.thetadot_des = (1-self.alpha) * self.theta_des_prev + (self.alpha) * thetadot_des
         thetadot_des = self.thetadot_des
         
         self.x_des_prev = x_des
