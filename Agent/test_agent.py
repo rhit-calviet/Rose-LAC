@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image
 from Localization.Estimator import Estimator
 from Localization.Controller import Controller
+from Localization.CameraFrameTransform import CameraFrameTransform
 from Navigation.python.path import GeneratePath
 
 import carla
@@ -40,6 +41,7 @@ class TestAgent(AutonomousAgent):
 
         self.estimator = Estimator(tf0.location.x, tf0.location.y, tf0.location.z, tf0.rotation.pitch, tf0.rotation.roll, tf0.rotation.yaw, map_size, cell_size, num_map_subcells=2, map_buffer=4)
         self.controller = Controller(dt=0.05, v_min=-0.2, v_max=0.48, w_max=4.13, zeta_v=2, wn_v=2.5, zeta_w=2, wn_w=2.5)
+        self.camera_transformer = CameraFrameTransform()
         self.path_generator = GeneratePath(map_size, map_size, cell_size, velocity=0.2)
 
         self.set_front_arm_angle(np.pi/3)

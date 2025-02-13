@@ -13,7 +13,7 @@ class RobotPose:
         pitch0 = pitch0
         yaw0 = yaw0
         # Standard Deviation of initial rotation [rad]
-        salp0 = 0
+        salp0 = 0.0001
 
         # Initial Angular Velocity [rad/s]
         w0 = np.zeros(3, dtype=np.float64)
@@ -23,7 +23,7 @@ class RobotPose:
         # Initial Position
         x_pos0 = np.array([x0, y0, z0], dtype=np.float64)
         # Standard Deviation of initial position [m]
-        sx0 = 0
+        sx0 = 0.0001
 
         # Initial Linear Velocity [m/s]
         v0 = np.zeros(3, dtype=np.float64)
@@ -36,7 +36,7 @@ class RobotPose:
         sa0 = 0.001
         
         # Max expected angular acceleration [rad/s^2]
-        w_dot_max = 2
+        w_dot_max = 4
         # Standard deviation of the equation w_dot = 0 [rad/s^2]
         sw = w_dot_max
         
@@ -67,8 +67,8 @@ class RobotPose:
         """
 
         # Construct observations
-        imu = Observations.IMUObservation(accel=accel, gyro=gyro, accel_var=0.05, gyro_var=0.01)
-        odo = Observations.OdometryObservation(lin_speed, ang_speed, 0.05, 1, 0.05, 3)
+        imu = Observations.IMUObservation(accel=accel, gyro=gyro, accel_var=0.01**2, gyro_var=0.01**2)
+        odo = Observations.OdometryObservation(lin_speed, ang_speed, 0.05**2, 0.1**2, 0.1**2, 0.5**2)
         observations = Observations.Observations(imu, odo, self.__points, self.__directions)
 
         # Update kalman filter with observtions
