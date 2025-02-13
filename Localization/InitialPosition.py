@@ -1,3 +1,7 @@
+import math
+import numpy as np
+
+
 class InitialPosition:
 
     def __init__(self):
@@ -13,23 +17,76 @@ class InitialPosition:
             258: (-1.033, -0.691, 0.412), 5: (-0.691, -1.033, 0.412)
         }
 
+    # Helper functions to create rotation matrices
+    def rotation_matrix_x(self, angle):
+        return np.array([
+            [1, 0, 0],
+            [0, math.cos(angle), -math.sin(angle)],
+            [0, math.sin(angle), math.cos(angle)]
+        ])
+
+    def rotation_matrix_y(self, angle):
+        return np.array([
+            [math.cos(angle), 0, math.sin(angle)],
+            [0, 1, 0],
+            [-math.sin(angle), 0, math.cos(angle)]
+        ])
+
+    def rotation_matrix_z(self, angle):
+        return np.array([
+            [math.cos(angle), -math.sin(angle), 0],
+            [math.sin(angle), math.cos(angle), 0],
+            [0, 0, 1]
+        ])
+
+    # Construct 4x4 transformation matrix from rotation and translation
+    def create_transform(self, rotation, translation):
+        # Extract angles (roll-X, pitch-Y, yaw-Z)
+        roll = rotation.roll
+        pitch = rotation.pitch
+        yaw = rotation.yaw
+
+        # Compute individual rotation matrices
+        Rx = self.rotation_matrix_x(roll)
+        Ry = self.rotation_matrix_y(pitch)
+        Rz = self.rotation_matrix_z(yaw)
+
+        # Combine rotations: R = Rz * Ry * Rx (applied in order X -> Y -> Z)
+        R = Rz @ Ry @ Rx
+
+        # Create 4x4 transformation matrix
+        T = np.eye(4)
+        T[:3, :3] = R
+        T[:3, 3] = [translation.x, translation.y, translation.z]
+        return T
+
 
     def get_initial_lander_world_position(self):
-        # Get the rover's transform in the world frame
+        # Get initial transforms
         rover_transform = get_initial_position()
-        # Get the lander's transform relative to the rover
-        lander_relative = get_initial_lander_position()
+        lander_relative_transform = get_initial_lander_position()
 
-        # Extract the lander's local coordinates
-        lx = lander_relative.location.x
-        ly = lander_relative.location.y
-        lz = lander_relative.location.z
+        # Rover's world transform matrix (rover -> world)
+        M_rover = self.create_transform(
+            rover_transform.rotation,
+            rover_transform.location
+        )
 
-        # Apply the rover's transform to get the lander's world coordinates
-        lander_world = rover_transform.transform(lx, ly, lz)
+        # Lander's relative transform matrix (lander -> rover)
+        M_lander_relative = self.create_transform(
+            lander_relative_transform.rotation,
+            lander_relative_transform.location
+        )
 
-        # The result is the lander's position in the world coordinate system
-        return lander_world.x, lander_world.y, lander_world.z
+        # Compute lander's world transform (lander -> world)
+        M_lander_world = M_rover @ M_lander_relative
+
+        # Extract lander's world coordinates from the final matrix
+        lander_world_x = M_lander_world[0, 3]
+        lander_world_y = M_lander_world[1, 3]
+        lander_world_z = M_lander_world[2, 3]
+        
+        return lander_world_x, lander_world_y, lander_world_z
 
 
     def get_fiducial_world_coordinates(self):
