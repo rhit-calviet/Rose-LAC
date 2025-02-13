@@ -1,19 +1,24 @@
 import cv2
 import numpy as np
+import sys
 from detect_fiducials import *
-from Localization.InitialPosition import *
-
+sys.path.insert(1, 'Localization')
+from InitialPosition import InitialPosition
 
 class LocalCoordinates:
     def __init__(self, image):
         self.image = image
         self.h, self.w = image.shape[:2]
-        self.FIDUCIAL_TAG_COORDINATES = get_fiducial_world_coordinates()
+        init_pos = InitialPosition()
+        self.FIDUCIAL_TAG_COORDINATES = init_pos.get_fiducial_world_coordinates()
         
 
     def get_coordinates(self):
         # Get detected fiducials
         fiducial_group, centers = fiducials(self.image)
+
+        if(centers is None):
+            return None
 
         # print('Fiducial Group: ' + fiducial_group)
         # for tag_id, (center_x, center_y) in centers:
@@ -69,7 +74,10 @@ class LocalCoordinates:
 
 
         coordinates = np.array(object_points, dtype=np.float32)  # Convert to ndarray
+        for i, vector in enumerate(camera_local_vectors):
+            camera_local_vectors[i] = (vector[2], -vector[0], -vector[1])
         vectors = np.array(camera_local_vectors, dtype=np.float32)  # Convert to ndarray
+       
         
         # Estimate variance as the mean squared error of projection errors
         projected_points, _ = cv2.projectPoints(np.array(object_points, dtype=np.float32),
@@ -84,3 +92,7 @@ class LocalCoordinates:
         return list(zip(coordinates, vectors, [variance] * len(coordinates)))  # Return as a list of tuples
 
 
+if __name__ == '__main__':
+    image = cv2.imread('C:/Users/beaslebf/Projects/Rose-LAC/perception/python/test_images/fiducials_test.jpeg')
+    local_coordinates = LocalCoordinates(image)
+    print(local_coordinates.get_coordinates())

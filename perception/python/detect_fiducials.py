@@ -42,7 +42,7 @@ def detect_fiducial(image):
     # Detect AprilTags
     corners, ids, _ = detector.detectMarkers(gray)
     if ids is None or len(ids) != 4:
-        return None  # Require exactly 4 tags
+        return None, None  # Require exactly 4 tags
     
     # Extract tag info (corners and IDs)
     tag_info = list(zip(corners, ids.flatten()))
@@ -72,6 +72,9 @@ def calculate_tag_centers(tag_info):
 
 def fiducials(image):
     fiducial, tag_info = detect_fiducial(image)
-    centers = calculate_tag_centers(tag_info)
     
+    if tag_info is None:
+        return None, None
+    
+    centers = calculate_tag_centers(tag_info)
     return fiducial, centers
