@@ -16,6 +16,7 @@ from Localization.Estimator import Estimator
 from Localization.Controller import Controller
 from Localization.CameraFrameTransform import CameraFrameTransform
 from Navigation.python.path import GeneratePath
+from perception.python.local_coordinates import LocalCoordinates
 
 import carla
 
@@ -94,8 +95,13 @@ class TestAgent(AutonomousAgent):
         # TODO: Add elevation observations
         self.estimator.add_elevation_points()
 
-        # TODO: Add Position observations
-        self.estimator.add_point_observation()
+        # TODO: Control when to check for fiducials
+        local_coordinates = LocalCoordinates(front_left) 
+        point_observation = local_coordinates.get_coordinates() # Returns None if no fiducials are detected
+        if point_observation is not None:
+            for point in point_observation:
+                world_coord, local_coord, var = point
+                self.estimator.add_point_observation(world_coord, self.camera_transformer.camera_to_robot_frame(local_coord, 'front_left'), var)
 
         # TODO: Add Direction observations
         self.estimator.add_direction_observation()
