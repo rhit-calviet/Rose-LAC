@@ -14,7 +14,8 @@ class InitialPosition:
             10: (-0.691, 1.033, 0.894), 11: (-1.033, 0.691, 0.894),
             8: (-0.691, 1.033, 0.412), 9: (-1.033, 0.691, 0.412),
             464: (-1.033, -0.691, 0.894), 459: (-0.691, -1.033, 0.894),
-            258: (-1.033, -0.691, 0.412), 5: (-0.691, -1.033, 0.412)
+            258: (-1.033, -0.691, 0.412), 5: (-0.691, -1.033, 0.412),
+            69: (0.0, 0.662, 0.325)
         }
 
     # Helper functions to create rotation matrices
@@ -85,21 +86,15 @@ class InitialPosition:
         lander_world_x = M_lander_world[0, 3]
         lander_world_y = M_lander_world[1, 3]
         lander_world_z = M_lander_world[2, 3]
-        
+
+        # Translate fiducial coordinates to world coordinates
+        for tag_id, (fx, fy, fz) in self.fiducials_tag_coordinates.items():
+            self.fiducials_tag_coordinates[tag_id] = (lander_world_x + fx, lander_world_y + fy, lander_world_z + fz)
+
         return lander_world_x, lander_world_y, lander_world_z
 
 
     def get_fiducial_world_coordinates(self):
-        # Get the lander's world position
-        # lander_x, lander_y, lander_z = self.get_initial_lander_world_position()
-
-        # # Dictionary to store the updated fiducial positions
-        # fiducial_world_coords = {}
-
-        # for tag_id, (fx, fy, fz) in self.TAG_COORDINATES_LANDER.items():
-        #     # Translate fiducial coordinates to world coordinates
-        #     fiducial_world_coords[tag_id] = (lander_x + fx, lander_y + fy, lander_z + fz)
-
         # return fiducial_world_coords
         return self.fiducials_tag_coordinates
 

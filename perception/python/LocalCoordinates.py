@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import sys
-from detect_fiducials import *
 sys.path.insert(1, 'Localization')
 from InitialPosition import InitialPosition
 
@@ -12,17 +11,62 @@ class LocalCoordinates:
         init_pos = InitialPosition()
         self.FIDUCIAL_TAG_COORDINATES = init_pos.get_fiducial_world_coordinates()
         
+        self.FIDUCIAL_TAG_IDS = { # Known AprilTag IDs for each fiducial
+            "A": [243, 71, 462, 37],   # IDs for Fiducial A
+            "B": [0, 3, 2, 1],         # IDs for Fiducial B
+            "C": [10, 11, 8, 9],       # IDs for Fiducial C
+            "D": [464, 459, 258, 5],   # IDs for Fiducial D
+            "Charger": [69]}          # ID for Charger Fiducial
+        
+
+    def detect_fiducial(self, image):
+        """Detect fiducial using OpenCV's AprilTag detector."""
+        dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
+        detector_params = cv2.aruco.DetectorParameters()
+        detector = cv2.aruco.ArucoDetector(dictionary, detector_params)
+        
+        # Convert to grayscale if needed
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
+        
+        # Detect AprilTags
+        corners, ids, _ = detector.detectMarkers(gray)
+        if ids is None or len(ids) != 4:
+            return None  # Require exactly 4 tags
+        
+        # Extract tag info (corners and IDs)
+        tag_info = list(zip(corners, ids.flatten()))
+        
+        return tag_info
+
+    def calculate_tag_centers(self, tag_info):
+        """Calculate the center pixel coordinates of each detected tag."""
+        centers = []
+        for corners, tag_id in tag_info:
+            # corners is an array of shape (1, 4, 2); we need to reshape it to (4, 2)
+            corners = corners.reshape(4, 2)
+            # Calculate the center as the average of the corner points
+            center_x = int(np.mean(corners[:, 0]))
+            center_y = int(np.mean(corners[:, 1]))
+            centers.append((tag_id, (center_x, center_y)))
+        return centers
+
+
+    def get_fiducials(self, image):
+        tag_info = self.detect_fiducial(image)
+
+        if tag_info is None:
+            return None, None
+        
+        centers = self.calculate_tag_centers(tag_info)
+        return centers
+        
 
     def get_coordinates(self):
         # Get detected fiducials
-        fiducial_group, centers = fiducials(self.image)
+        centers = self.get_fiducials(self.image)
 
-        if(centers is None):
-            return None
-
-        # print('Fiducial Group: ' + fiducial_group)
-        # for tag_id, (center_x, center_y) in centers:
-        #     print(f"Tag ID {tag_id}: Center at ({center_x}, {center_y})")
+        if centers is None:
+            return None  # No fiducials detected
 
         # Get corresponding 3D-2D point pairs
         object_points = []
@@ -56,7 +100,7 @@ class LocalCoordinates:
         R, _ = cv2.Rodrigues(rvec)
 
         # Calculate camera position in global coordinates
-        camera_position_global = -np.matrix(R).T @ np.matrix(tvec)
+        #camera_position_global = -np.matrix(R).T @ np.matrix(tvec)
 
         # Transform fiducial points to camera's local coordinate system
         camera_local_vectors = []
@@ -66,11 +110,6 @@ class LocalCoordinates:
             transform_matrix = np.vstack([np.hstack([R, tvec]), [0, 0, 0, 1]])
             camera_local_point = transform_matrix.T @ global_point_homogeneous
             camera_local_vectors.append(camera_local_point[:3].flatten())  # Flatten to 1D array
-
-        # Output vectors in camera's local coordinate system
-        # print("\nVectors from camera to fiducials (camera local frame):")
-        # for i, vector in enumerate(camera_local_vectors):
-        #     print(f"Fiducial {i+1}: ({vector[0]:.3f}, {vector[1]:.3f}, {vector[2]:.3f})")
 
 
         coordinates = np.array(object_points, dtype=np.float32)  # Convert to ndarray
