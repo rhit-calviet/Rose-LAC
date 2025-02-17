@@ -1,6 +1,6 @@
 import numpy as np
 
-
+import carla
 """
 X-axis: Camera Out-Of-Plane
 Y-axis: Camera Horizontal
@@ -21,11 +21,11 @@ class CameraFrameTransform:
                                            [ 0,  1,  0, -0.081],
                                            [ 0,  0,  1,  0.131],
                                            [ 0,  0,  0,  1    ]]),
-            'rear left':         np.array([[-1,  0,  0, -0.280],
+            'back left':         np.array([[-1,  0,  0, -0.280],
                                            [ 0, -1,  0, -0.081],
                                            [ 0,  0,  1,  0.131],
                                            [ 0,  0,  0,  1    ]]),
-            'rear right':        np.array([[-1,  0,  0, -0.280],
+            'back right':        np.array([[-1,  0,  0, -0.280],
                                            [ 0, -1,  0,  0.081],
                                            [ 0,  0,  1,  0.131],
                                            [ 0,  0,  0,  1    ]]),
@@ -55,13 +55,37 @@ class CameraFrameTransform:
                                            [ 0,  0,  0,  1    ]]),
         }
 
-        self.body_fixed_cameras = ['Front Left', 'Front Right', 'Rear Left', 'Rear Right', 'Left', 'Right']
+        self.body_fixed_cameras = [ carla.SensorPosition.FrontLeft,
+                                    carla.SensorPosition.FrontRight,
+                                    carla.SensorPosition.Left,
+                                    carla.SensorPosition.Right,
+                                    carla.SensorPosition.BackLeft,
+                                    carla.SensorPosition.BackRight]
         self.front_arm_angle = 0
         self.rear_arm_angle = 0
 
     def update_arm_angles(self, front_arm_angle:float, rear_arm_angle:float):
         self.front_arm_angle = front_arm_angle
         self.rear_arm_angle = rear_arm_angle
+
+    def carla_object_camera_to_robot_frame(self, camera_coords:np.ndarray, camera):
+        """
+        Camera coords: (3,N) array of coordinates in camera frame
+        x-axis: camera out-of-plane axis (points in direction of camera)
+        y-axis: camera horizontal axis (points in direction of left of picture)
+        z-axis: camera vertical axis (points in direction of top of picture)
+        """
+        carla2name = {  carla.SensorPosition.Front:         'front arm',
+                        carla.SensorPosition.FrontLeft:     'front left',
+                        carla.SensorPosition.FrontRight:    'front right',
+                        carla.SensorPosition.Left:          'left',
+                        carla.SensorPosition.Right:         'right',
+                        carla.SensorPosition.BackLeft:      'back left',
+                        carla.SensorPosition.BackRight:     'back right',
+                        carla.SensorPosition.Back:          'back'}
+        
+        return self.camera_to_robot_frame(camera_coords, carla2name[camera])
+
 
     def camera_to_robot_frame(self, camera_coords:np.ndarray, camera:str):
         """
