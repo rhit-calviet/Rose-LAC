@@ -16,7 +16,8 @@ from Localization.Estimator import Estimator
 from Localization.Controller import Controller
 from Localization.CameraFrameTransform import CameraFrameTransform
 from Navigation.python.path import GeneratePath
-from perception.python.local_coordinates import LocalCoordinates
+from Navigation.python.AccelerationLimitedProfile import AccelerationLimitedProile
+from perception.python.LocalCoordinates import LocalCoordinates
 
 import carla
 
@@ -41,9 +42,19 @@ class TestAgent(AutonomousAgent):
         cell_size = self.geomap.get_cell_size()
 
         self.estimator = Estimator(tf0.location.x, tf0.location.y, tf0.location.z, tf0.rotation.pitch, tf0.rotation.roll, tf0.rotation.yaw, map_size, cell_size, num_map_subcells=2, map_buffer=4)
-        self.controller = Controller(dt=0.05, v_min=-0.2, v_max=0.48, w_max=4.13, zeta_v=2, wn_v=2.5, zeta_w=2, wn_w=2.5)
+        self.controller = Controller(dt=0.05, v_min=-0.35, v_max=0.35, w_max=3, zeta_v=2, wn_v=2.5, zeta_w=2, wn_w=2.5)
+        self.accel_profile = AccelerationLimitedProile(v_max=0.3, a_max=0.5)
         self.camera_transformer = CameraFrameTransform()
         self.path_generator = GeneratePath(map_size, map_size, cell_size, velocity=0.2)
+
+        self.cameras = [carla.SensorPosition.Front,
+                        carla.SensorPosition.FrontLeft,
+                        carla.SensorPosition.FrontRight,
+                        carla.SensorPosition.Left,
+                        carla.SensorPosition.Right,
+                        carla.SensorPosition.BackLeft,
+                        carla.SensorPosition.BackRight,
+                        carla.SensorPosition.Back]
 
         self.set_front_arm_angle(np.pi/3)
         self.set_back_arm_angle(np.pi/3)
@@ -58,7 +69,7 @@ class TestAgent(AutonomousAgent):
         """
         sensors = {
             carla.SensorPosition.Front: {
-                'camera_active': False, 'light_intensity': 0, 'width': '2448', 'height': '2048'
+                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
             },
             carla.SensorPosition.FrontLeft: {
                 'camera_active': True, 'light_intensity': 1, 'width': '1224', 'height': '1024'
@@ -67,19 +78,19 @@ class TestAgent(AutonomousAgent):
                 'camera_active': True, 'light_intensity': 1, 'width': '1224', 'height': '1024'
             },
             carla.SensorPosition.Left: {
-                'camera_active': False, 'light_intensity': 0, 'width': '2448', 'height': '2048'
+                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
             },
             carla.SensorPosition.Right: {
-                'camera_active': False, 'light_intensity': 0, 'width': '2448', 'height': '2048'
+                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
             },
             carla.SensorPosition.BackLeft: {
-                'camera_active': False, 'light_intensity': 0, 'width': '2448', 'height': '2048'
+                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
             },
             carla.SensorPosition.BackRight: {
-                'camera_active': False, 'light_intensity': 0, 'width': '2448', 'height': '2048'
+                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
             },
             carla.SensorPosition.Back: {
-                'camera_active': False, 'light_intensity': 0, 'width': '2448', 'height': '2048'
+                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
             },
         }
         return sensors
@@ -95,16 +106,19 @@ class TestAgent(AutonomousAgent):
         # TODO: Add elevation observations
         self.estimator.add_elevation_points()
 
-        # TODO: Control when to check for fiducials
-        local_coordinates = LocalCoordinates(front_left) 
-        point_observation = local_coordinates.get_coordinates() # Returns None if no fiducials are detected
-        if point_observation is not None:
-            for point in point_observation:
-                world_coord, local_coord, var = point
-                self.estimator.add_point_observation(world_coord, self.camera_transformer.camera_to_robot_frame(local_coord, 'front_left'), var)
+        # Check for fiducials
+        for cam in self.cameras:
+            img = input_data['Grayscale'][cam]
+            if img is not None: # None if no image taken
+                local_coordinates = LocalCoordinates(img) 
+                point_observation = local_coordinates.get_coordinates() # Returns None if no fiducials are detected
+                if point_observation is not None:
+                    for point in point_observation:
+                        world_coord, local_coord, var = point
+                        self.estimator.add_point_observation(world_coord, self.camera_transformer.carla_object_camera_to_robot_frame(local_coord, cam), var)
 
         # TODO: Add Direction observations
-        self.estimator.add_direction_observation()
+        #self.estimator.add_direction_observation()
             
         # Get sensor measurements
         lin_speed = self.get_linear_speed()
@@ -126,10 +140,34 @@ class TestAgent(AutonomousAgent):
         x_desired = 0
         y_desired = 0
         theta_desired = 0
+        curr_path_arclength = self.accel_profile.x(mission_time, total_arc_length)
 
         # Compute Control Inputs
         v,w = self.controller.compute_control_inputs(x_curr, y_curr, theta_curr, xdot_curr, ydot_curr, thetadot_curr, x_desired, y_desired, theta_desired, angle_control=False)
         control = carla.VehicleVelocityControl(v, w)
+
+        # Determine which camera to turn on to track lander
+        best_alignment = -1
+        best_cam = None
+        for cam in self.cameras:
+            x_axis = np.ndarray([[1],
+                                 [0],
+                                 [0]])
+            robot_frame_cam_x_axis = self.camera_transformer.carla_object_camera_to_robot_frame(x_axis, cam)
+            world_cam_x_axis, _ = self.estimator.robot.convert_local_to_world_vector(robot_frame_cam_x_axis.T, 0)
+            world_robot_pos, _ = self.estimator.robot.current_position()
+            alignment = -np.dot(world_robot_pos, world_cam_x_axis)
+            if alignment > best_alignment:
+                best_alignment = alignment
+                best_cam = cam
+        # Set cameras
+        for cam in self.cameras:
+            if cam in [carla.SensorPosition.FrontLeft, carla.SensorPosition.FrontRight, best_cam]:
+                self.set_camera_state(cam, True)
+                self.set_light_state(cam, 1)
+            else:
+                self.set_camera_state(cam, False)
+                self.set_light_state(cam, 0)
 
         if mission_time > 10000:
             self.mission_complete()
