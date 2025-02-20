@@ -86,19 +86,25 @@ class DepthMap:
     def vectorize_list(self):
         h, w = self.depthMap.shape
 
+        # Generate x, y coordinate indices
         y_coords, x_coords = np.indices((h, w))
 
-        self.vectorizedMap_list = np.column_stack((x_coords.ravel(), y_coords.ravel(), self.depthMap.ravel(), self.varianceMap.ravel()))
+        # Create two separate lists:
+        vectorized_positions = np.column_stack((x_coords.ravel(), y_coords.ravel(), self.depthMap.ravel()))
+        vectorized_variances = self.varianceMap.ravel()  # Flattened 1D array of variances
+
+        self.vectorized_positions = vectorized_positions
+        self.vectorized_variances = vectorized_variances
 
     def compute(self, imgLeft, imgRight):
         self.imgLeft = cv.imread(imgLeft, cv.IMREAD_GRAYSCALE)
         self.imgRight = cv.imread(imgRight, cv.IMREAD_GRAYSCALE)
 
-        stereo_pair = np.hstack((self.imgLeft, self.imgRight))
-        small_stereo_pair = cv.resize(stereo_pair, None, fx=0.3, fy=0.3, interpolation=cv.INTER_AREA)
+        # stereo_pair = np.hstack((self.imgLeft, self.imgRight))
+        # small_stereo_pair = cv.resize(stereo_pair, None, fx=0.3, fy=0.3, interpolation=cv.INTER_AREA)
         
-        cv.imshow("Pre-rectified stereo images", small_stereo_pair)
-        cv.waitKey(0)
+        # cv.imshow("Pre-rectified stereo images", small_stereo_pair)
+        # cv.waitKey(0)
 
         # self.rectify()
 
@@ -110,21 +116,21 @@ class DepthMap:
 
         self.disparity()
 
-        small_disparity_map = cv.resize(self.disparityMapVis, None, fx=0.3, fy=0.3, interpolation=cv.INTER_AREA)
-        cv.imshow("Disparity image", small_disparity_map)
-        cv.waitKey(0)
+        # small_disparity_map = cv.resize(self.disparityMapVis, None, fx=0.3, fy=0.3, interpolation=cv.INTER_AREA)
+        # cv.imshow("Disparity image", small_disparity_map)
+        # cv.waitKey(0)
 
         self.depth()
 
-        small_depth_map = cv.resize(self.depthMap, None, fx=0.3, fy=0.3, interpolation=cv.INTER_AREA)
-        cv.imshow("Depth image", small_depth_map)
-        cv.waitKey(0)
+        # small_depth_map = cv.resize(self.depthMap, None, fx=0.3, fy=0.3, interpolation=cv.INTER_AREA)
+        # cv.imshow("Depth image", small_depth_map)
+        # cv.waitKey(0)
 
         self.variance()
 
-        small_variance_map = cv.resize(self.varianceMap, None, fx=0.3, fy=0.3, interpolation=cv.INTER_AREA)
-        cv.imshow("Varance image", small_variance_map)
-        cv.waitKey(0)
+        # small_variance_map = cv.resize(self.varianceMap, None, fx=0.3, fy=0.3, interpolation=cv.INTER_AREA)
+        # cv.imshow("Varance image", small_variance_map)
+        # cv.waitKey(0)
 
         self.vectorize()
 
