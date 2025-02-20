@@ -86,9 +86,15 @@ class DepthMap:
     def vectorize_list(self):
         h, w = self.depthMap.shape
 
+        # Generate x, y coordinate indices
         y_coords, x_coords = np.indices((h, w))
 
-        self.vectorizedMap_list = np.column_stack((x_coords.ravel(), y_coords.ravel(), self.depthMap.ravel(), self.varianceMap.ravel()))
+        # Create two separate lists:
+        vectorized_positions = np.column_stack((x_coords.ravel(), y_coords.ravel(), self.depthMap.ravel()))
+        vectorized_variances = self.varianceMap.ravel()  # Flattened 1D array of variances
+
+        self.vectorized_positions = vectorized_positions
+        self.vectorized_variances = vectorized_variances
 
     def compute(self, imgLeft, imgRight):
         self.imgLeft = cv.imread(imgLeft, cv.IMREAD_GRAYSCALE)
