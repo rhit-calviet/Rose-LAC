@@ -29,6 +29,17 @@ class AccelerationLimitedProile:
             return xf - 0.5*self.a_max*(tf-t)*(tf-t)
         return xf
     
+    def total_time(self, xf:float):
+        if self.v_max*self.v_max/self.a_max < xf:
+            ta = self.v_max / self.a_max
+            tf = ta + xf / self.v_max
+            return tf
+        ta = np.sqrt(xf/self.a_max)
+        tf = 2*ta
+        return tf
+        
+        
+    
 
 if __name__ == "__main__":
     accel = AccelerationLimitedProile(0.4, 0.1)
