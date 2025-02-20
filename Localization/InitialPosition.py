@@ -4,7 +4,7 @@ import numpy as np
 
 class InitialPosition:
 
-    def __init__(self):
+    def __init__(self, rover_transform, lander_relative_transform):
         # Known tag coordinates (in lander's local frame F_L)
         self.fiducials_tag_coordinates = {
             243: (0.691, -1.033, 0.894), 71: (1.033, -0.691, 0.894),
@@ -17,6 +17,9 @@ class InitialPosition:
             258: (-1.033, -0.691, 0.412), 5: (-0.691, -1.033, 0.412),
             69: (0.0, 0.662, 0.325)
         }
+
+        self.rover_transform = rover_transform
+        self.lander_relative_transform = lander_relative_transform
 
     # Helper functions to create rotation matrices
     def rotation_matrix_x(self, angle):
@@ -63,20 +66,16 @@ class InitialPosition:
 
 
     def get_initial_lander_world_position(self):
-        # Get initial transforms
-        rover_transform = get_initial_position()
-        lander_relative_transform = get_initial_lander_position()
-
         # Rover's world transform matrix (rover -> world)
         M_rover = self.create_transform(
-            rover_transform.rotation,
-            rover_transform.location
+            self.rover_transform.rotation,
+            self.rover_transform.location
         )
 
         # Lander's relative transform matrix (lander -> rover)
         M_lander_relative = self.create_transform(
-            lander_relative_transform.rotation,
-            lander_relative_transform.location
+            self.lander_relative_transform.rotation,
+            self.lander_relative_transform.location
         )
 
         # Compute lander's world transform (lander -> world)
