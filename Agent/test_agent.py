@@ -18,6 +18,7 @@ from Localization.CameraFrameTransform import CameraFrameTransform
 from Navigation.python.path import GeneratePath
 from Navigation.python.AccelerationLimitedProfile import AccelerationLimitedProile
 from perception.python.LocalCoordinates import LocalCoordinates
+from perception.python.depth import DepthMap
 
 import carla
 
@@ -45,6 +46,7 @@ class TestAgent(AutonomousAgent):
         self.controller = Controller(dt=0.05, v_min=-0.35, v_max=0.35, w_max=3, zeta_v=2, wn_v=2.5, zeta_w=2, wn_w=2.5)
         self.accel_profile = AccelerationLimitedProile(v_max=0.3, a_max=0.5)
         self.camera_transformer = CameraFrameTransform()
+        self.depth_generator = DepthMap(img_size=(2248, 2048), baseline=0.162, fx=1751.28, fy=1465.12, cx=1224, cy=1024)
         self.path_generator = GeneratePath(map_size, map_size, cell_size, velocity=0.2)
 
         self.cameras = [carla.SensorPosition.Front,
@@ -69,28 +71,28 @@ class TestAgent(AutonomousAgent):
         """
         sensors = {
             carla.SensorPosition.Front: {
-                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
+                'camera_active': False, 'light_intensity': 0, 'width': '2248', 'height': '2048'
             },
             carla.SensorPosition.FrontLeft: {
-                'camera_active': True, 'light_intensity': 1, 'width': '1224', 'height': '1024'
+                'camera_active': True, 'light_intensity': 1, 'width': '2248', 'height': '2048'
             },
             carla.SensorPosition.FrontRight: {
-                'camera_active': True, 'light_intensity': 1, 'width': '1224', 'height': '1024'
+                'camera_active': True, 'light_intensity': 1, 'width': '2248', 'height': '2048'
             },
             carla.SensorPosition.Left: {
-                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
+                'camera_active': False, 'light_intensity': 0, 'width': '2248', 'height': '2048'
             },
             carla.SensorPosition.Right: {
-                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
+                'camera_active': False, 'light_intensity': 0, 'width': '2248', 'height': '2048'
             },
             carla.SensorPosition.BackLeft: {
-                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
+                'camera_active': False, 'light_intensity': 0, 'width': '2248', 'height': '2048'
             },
             carla.SensorPosition.BackRight: {
-                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
+                'camera_active': False, 'light_intensity': 0, 'width': '2248', 'height': '2048'
             },
             carla.SensorPosition.Back: {
-                'camera_active': False, 'light_intensity': 0, 'width': '1224', 'height': '1024'
+                'camera_active': False, 'light_intensity': 0, 'width': '2248', 'height': '2048'
             },
         }
         return sensors
@@ -103,8 +105,10 @@ class TestAgent(AutonomousAgent):
         front_left = input_data['Grayscale'][carla.SensorPosition.FrontLeft]
         front_right = input_data['Grayscale'][carla.SensorPosition.FrontRight]
 
+        self.depth_generator.compute(front_left, front_right)
+
         # TODO: Add elevation observations
-        self.estimator.add_elevation_points()
+        self.estimator.add_elevation_points(self.depth_generator.vectorized_positions, self.depth_generator.vectorized_variances)
 
         # Check for fiducials
         for cam in self.cameras:
