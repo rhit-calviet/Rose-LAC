@@ -222,8 +222,17 @@ class GeneratePath:
 
         return (x_target, y_target)
     
+    def get_real_world_coords(self, x_curr, y_curr):
+        x_curr -= 0.5 * self.x
+        y_curr -= 0.5 * self.y
+
+        x_curr *= self.len
+        y_curr *= self.len
+
+        return x_curr, y_curr
+        
     def update(self, length, display=False):
-        print(f'DEBUG: length-{length}, display-{display}')
+        # print(f'DEBUG: length-{length}, display-{display}')
         self.update_curr_idx(length)
         curr_smooth_idx = self.cur_idx
         begin_idx = math.ceil(length / self.step_size)
@@ -236,11 +245,11 @@ class GeneratePath:
             x_s, y_s = self.path[curr_smooth_idx]
             x_n, y_n = self.path[curr_smooth_idx + 1]
 
-            start_idx = curr_smooth_idx
+            # start_idx = curr_smooth_idx
             start = self.encode(x_s, y_s)
 
             while self.check_rock(x_n, y_n):
-                print(f'DEBUG: index-{curr_smooth_idx}, rock found at-{x_n, y_n}')
+                # print(f'DEBUG: index-{curr_smooth_idx}, rock found at-{x_n, y_n}')
                 curr_smooth_idx += 1
                 x_n, y_n = self.path[curr_smooth_idx + 1]
                 # print(f'DEBUG: last position checked for rock-{x_n, y_n}')
@@ -251,7 +260,7 @@ class GeneratePath:
             
             curr_smooth_idx += 1
 
-            print(f'DEBUG: start idx-{curr_smooth_idx}, start rock-{x_s, y_s}, next rock-{x_n, y_n}')
+            # print(f'DEBUG: start idx-{curr_smooth_idx}, start rock-{x_s, y_s}, next rock-{x_n, y_n}')
             if self.check_rock(x_l, y_l): ## ERROR: doesn't go through this portion
                 print(f'DEBUG: continue through') 
                 x_e, y_e = self.path[curr_smooth_idx]
@@ -332,11 +341,11 @@ class GeneratePath:
         #     print("Path update completed.")
 
     def approximate_arc_length(self, path_deque):
-        """
-        Approximates arc length using discrete Euclidean distances.
-        """
-        path_array = np.array(list(path_deque))
-        return np.sum(np.sqrt(np.sum(np.diff(path_array, axis=0) ** 2, axis=1)))
+        """Assume we're being passed a smooth path"""
+
+        distance_per_step = self.step_size * 0.15
+        
+        return len(path_deque) * distance_per_step
 
     def compute_arc_length(self, path_deque, smoothing_factor=15):
         """

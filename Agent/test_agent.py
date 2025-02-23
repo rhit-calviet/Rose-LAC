@@ -15,8 +15,8 @@ from PIL import Image
 from Localization.Estimator import Estimator
 from Localization.Controller import Controller
 from Localization.CameraFrameTransform import CameraFrameTransform
-from Navigation.python.path import GeneratePath
-from Navigation.python.AccelerationLimitedProfile import AccelerationLimitedProile
+from navigation.python.path import GeneratePath
+from navigation.python.AccelerationLimitedProfile import AccelerationLimitedProile
 from perception.python.LocalCoordinates import LocalCoordinates
 from perception.python.depth import DepthMap
 
@@ -24,10 +24,8 @@ import carla
 
 from leaderboard.autoagents.autonomous_agent import AutonomousAgent
 
-
 def get_entry_point():
     return 'TestAgent'
-
 
 class TestAgent(AutonomousAgent):
 
@@ -41,6 +39,8 @@ class TestAgent(AutonomousAgent):
         
         map_size = self.geomap.get_map_size()
         cell_size = self.geomap.get_cell_size()
+
+        self.map_dims = int(map_size / cell_size)
 
         self.estimator = Estimator(tf0.location.x, tf0.location.y, tf0.location.z, tf0.rotation.pitch, tf0.rotation.roll, tf0.rotation.yaw, map_size, cell_size, num_map_subcells=2, map_buffer=4)
         self.controller = Controller(dt=0.05, v_min=-0.35, v_max=0.35, w_max=3, zeta_v=2, wn_v=2.5, zeta_w=2, wn_w=2.5)
@@ -140,9 +140,15 @@ class TestAgent(AutonomousAgent):
         (xdot_curr, ydot_curr, thetadot_curr), (var_vel, var_ang_vel) = self.estimator.current_2D_velocity()
 
         # TODO: Compute Navigation
-        elev, rock, elev_uncert, rock_uncert = self.estimator.get_cell_info(x_index, y_index)
-        x_desired = 0
-        y_desired = 0
+        for x_index in range(self.map_dims):
+            for y_index in range(self.map_dims):
+                elev, rock, elev_uncert, rock_uncert = self.estimator.get_cell_info(x_index, y_index)
+                if rock:
+                    self.path_generator.update(x_index, y_index)
+
+        total_arc_length = self.path_generator.approximate_arc_length(self.path_generator.smooth_path)
+        x_desired, y_desired = self.path_generator.get_cell_coords_at_length(total_arc_length)
+
         theta_desired = 0
         curr_path_arclength = self.accel_profile.x(mission_time, total_arc_length)
 
