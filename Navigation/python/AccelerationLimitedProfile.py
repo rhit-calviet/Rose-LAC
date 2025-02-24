@@ -7,6 +7,8 @@ class AccelerationLimitedProile:
         self.a_max = a_max
 
     def x(self, t:float, xf:float):
+        sign = np.sign(xf)
+        xf = abs(xf)
         if self.v_max*self.v_max/self.a_max < xf:
             ta = self.v_max / self.a_max
             tf = ta + xf / self.v_max
@@ -18,7 +20,7 @@ class AccelerationLimitedProile:
                 return 0.5*self.v_max*ta + self.v_max*(t-ta)
             if t < tf:
                 return xf - 0.5*self.a_max*(tf-t)*(tf-t)
-            return xf
+            return xf * sign
         ta = np.sqrt(xf/self.a_max)
         tf = 2*ta
         if t < 0:
@@ -27,9 +29,10 @@ class AccelerationLimitedProile:
             return 0.5*self.a_max*t*t
         if t < tf:
             return xf - 0.5*self.a_max*(tf-t)*(tf-t)
-        return xf
+        return xf * sign
     
     def total_time(self, xf:float):
+        xf = abs(xf)
         if self.v_max*self.v_max/self.a_max < xf:
             ta = self.v_max / self.a_max
             tf = ta + xf / self.v_max
