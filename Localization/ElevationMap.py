@@ -210,7 +210,6 @@ class ElevationMap:
 
         return elevation, rock, np.max(elev_uncert), np.max(elev_var_uncert)
 
-
 if __name__ == "__main__":
     min_dim = -27/2
     max_dim = 27/2
