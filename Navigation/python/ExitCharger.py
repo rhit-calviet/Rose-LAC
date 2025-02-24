@@ -9,16 +9,16 @@ from AccelerationLimitedProfile import AccelerationLimitedProile
 Come up with a desired x, y point for the rover to come to to begin the path to enter the charger. Pass those through to navigation which 
 in turn return the actual x0, y0, and theta0 that it passes over control at. Use those values to navigate from, to the initial charger position.
 '''
-# x0, y0, theta0: initial position and orientation of the rover
-# x1, y1, theta1: final position and orientation of the rover
-# runup_length: distance the rover should travel before entering the charger
+# x0, y0, theta0: initial position and orientation of the rover at the charger
+# x1, y1, theta1: final position and orientation of the rover for navigation takeover
+# runup_length: distance the rover should travel after exiting the charger
 # r: turn radius in rover path
 # v_max: maximum velocity of the rover
 # a_max: maximum acceleration of the rover
 # omega_max: maximum angular velocity of the rover
 # alpha_max: maximum angular acceleration of the rover
 
-class EnterCharger:
+class EnterExitCharger:
     def __init__(self, x0:float, y0:float, theta0:float, x1:float, y1:float, theta1:float, runup_length:float, r:float, v_max:float, a_max:float, omega_max:float, alpha_max:float):
         self.accel_profile = AccelerationLimitedProile(v_max, a_max)
         self.omega_profile = AccelerationLimitedProile(omega_max, alpha_max)
@@ -30,8 +30,8 @@ class EnterCharger:
         #p4 = point ending radial turn, starting runup coming into charger, or starting radial turn, after runup when leaving charger (p4x, p4y)
         #p5 = charger point (p5x, p5y, theta1)
 
-        self.delta_theta = self.theta_in_negpi_pi(self.theta1 - self.theta0) # angle between theta0 and theta1
-        self.p4x, self.p4y = self.p5x - self.runup_length * np.cos(self.theta1), self.p5y - self.runup_length * np.sin(self.theta1)
+        self.delta_theta = self.theta_in_negpi_pi(self.theta0 - self.theta1) # angle between theta0 and theta1
+        self.p4x, self.p4y = self.p5x + self.runup_length * np.cos(self.theta1), self.p5y + self.runup_length * np.sin(self.theta1)
         self.p3x, self.p3y = self.find_p3() # center of circle
         self.p2x, self.p2y = self.find_p2() # point at which radial turn begins
         
@@ -51,30 +51,26 @@ class EnterCharger:
         self.t_linear = self.accel_profile.total_time(self.linear_distance) 
         self.t_radial = self.accel_profile.total_time(self.radial_distance) 
         self.t_runup = self.accel_profile.total_time(runup_length)
+    
 
-    def step_enter_charger(self, t:float):
-        '''
-        phase:          turn, linear, radial turn, linear runup , no motion hold for setting, rotational hold
-        control(flag): theta,    xy,       xy,       xy,               xy,                      theta
-        '''
-        ## ASSUSE FLAG=0 for theta, FLAG=1 for XY
-        if (t < self.t_turn): 
-            return self.p1x, self.p1y, self.theta0 + self.omega_profile.x(t, self.theta_prime - self.theta0), 0
-        elif (t < self.t_turn + self.t_linear):
-            d = self.accel_profile.x(t - self.t_turn, self.linear_distance)
-            return self.p1x + d * np.cos(self.theta_prime), self.p1y + d * np.sin(self.theta_prime), 0, 1
-        elif (t < self.t_turn + self.t_linear + self.t_radial):
-            distance = self.accel_profile.x(t - self.t_turn - self.t_linear, self.radial_distance)
+    def step_exit_charger(self, t:float):
+        if (t < self.t_runup):
+            d = self.accel_profile.x(t, self.runup_length)
+            return self.p5x + d*np.cos(self.theta1), self.p5y + d*np.sin(self.theta1), self.theta1, 1
+        elif (t < self.t_runup + self.t_radial):
+            distance = self.accel_profile.x(t - self.t_runup, self.radial_distance)
             theta = distance/self.r
-            theta_prime = np.arctan2((self.p2y - self.p3y)/self.r, (self.p2x - self.p3x)/self.r)
-            change_x = self.p3x + self.r*np.cos(theta_prime + theta)
-            change_y = self.p3y + self.r*np.sin(theta_prime + theta)
+            theta_prime = np.arctan2((self.p4y - self.p3y)/self.r, (self.p4x - self.p3x)/self.r)
+            change_x =  self.p3x + self.r*np.cos(theta_prime + theta)
+            change_y = self.p3y + self.r*np.sin(theta_prime + theta)  
             return change_x, change_y, 0, 1
-        elif (t < self.t_turn + self.t_linear + self.t_radial + self.t_runup):
-            d = self.accel_profile.x(t - self.t_turn - self.t_linear - self.t_radial, self.runup_length)
-            return self.p4x + d*np.cos(self.theta1), self.p4y + d*np.sin(self.theta1), 0, 1
+        elif (t < self.t_runup + self.t_radial + self.t_linear):
+            d = self.accel_profile.x(t - self.t_runup - self.t_radial, self.linear_distance)
+            return self.p2x - d * np.cos(self.theta_prime), self.p2y - d * np.sin(self.theta_prime), self.theta_prime, 1
+        elif (t < self.t_runup + self.t_radial + self.t_linear + self.t_turn):
+            return self.p1x, self.p1y, self.theta_prime + self.omega_profile.x(t - self.t_runup - self.t_radial - self.t_linear, self.theta0 - self.theta_prime), 0
         else:
-            return self.p5x, self.p5y, self.theta1, 0 #holding position
+            return self.p1x, self.p1y, self.theta0, 0 #holding
     
 
     def theta_in_negpi_pi(self, theta):
@@ -97,8 +93,13 @@ class EnterCharger:
         p2x2, p2y2 = self.p3x- self.r * ux, self.p3y - self.r * uy
 
         # Compute the angle between the P2s and P4
-        angle1 = math.atan2(self.p4y - p2y1, self.p4x - p2x1)
-        angle2 = math.atan2(self.p4y - p2y2, self.p4x - p2x2)
+        angle1 = math.atan2(p2y1 - self.p4y, p2x1 - self.p4x)
+        angle2 = math.atan2(p2y2 - self.p4y, p2x2 - self.p4x)
+
+        print(f"first point {p2x1, p2y1}")
+        print(f"second point {p2x2, p2y2}")
+        print(f"angle1 {angle1}")
+        print(f"angle2 {angle2}")
 
         # Choose the P2 that is closest to the desired angle
         if abs(angle1 - self.delta_theta) < abs(angle2 - self.delta_theta):
@@ -119,7 +120,7 @@ class EnterCharger:
 
     def find_p3(self):
         # Direction vector of the line
-        vx, vy = self.p5x - self.p4x, self.p5y - self.p4y
+        vx, vy = self.p4x - self.p5x, self.p4y - self.p5y
         
         # Perpendicular unit vector (-vy, vx)
         length = np.hypot(vx, vy)  # Normalize
@@ -130,8 +131,8 @@ class EnterCharger:
         c2_x, c2_y = self.p4x - self.r * ux, self.p4y - self.r * uy
 
         # Compute distances to P1
-        d1 = np.hypot(c1_x - self.p1x, c1_y - self.p1y)
-        d2 = np.hypot(c2_x - self.p1x, c2_y - self.p1y)
+        d1 = np.hypot(self.p1x - c1_x, self.p1y - c1_y)
+        d2 = np.hypot(self.p1x - c2_x, self.p1y - c2_y)
 
         # Choose the closer one
         return (c1_x, c1_y) if d1 < d2 else (c2_x, c2_y)
@@ -154,20 +155,18 @@ class EnterCharger:
     def total_time(self):
         return self.t_turn + self.t_linear + self.t_radial + self.t_runup
 
-    
 
 if __name__ == '__main__':
     # Test EnterExitCharger
-
-    enter_charger = EnterCharger(0, 1.5, np.pi/4, 1.5, 0, np.pi/4, 0.5, 0.25, 0.3, 0.5, 4, 8) 
-    tf = enter_charger.total_time()
+    exit_charger = EnterExitCharger(2, 2, np.pi/4, 1, 0, np.pi/10, 0.5, 0.25, 0.3, 0.5, 4, 8)
+    tf = exit_charger.total_time()
     n = 10000
     ts = np.linspace(0,tf,n)
     xs = np.zeros_like(ts)
     ys = np.zeros_like(ts)
     ths = np.zeros_like(ts)
     for i in range(n):
-        x,y,theta, flag = enter_charger.step_enter_charger(ts[i])
+        x,y,theta, flag = exit_charger.step_exit_charger(ts[i])
         xs[i] = x
         ys[i] = y
         ths[i] = theta
@@ -185,4 +184,4 @@ if __name__ == '__main__':
     # plt.figure(4)
     # plt.plot(ts, ths)
     plt.show()
-    
+
