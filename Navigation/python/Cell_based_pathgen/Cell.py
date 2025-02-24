@@ -52,17 +52,17 @@ class Cell:
                 return
             if self.output == 2:
                 # Turn 90
-                return
+                return self.__turn_x(t), self.cell_size - self.__turn_y(t)
             if self.output == 4:
                 # Turn 90
-                return
+                return self.__turn_x(t), self.__turn_y(t)
             if self.output == 3:
                 # Turn 180
                 return
         if self.input == 4:
             return
     
-    def __turn_xposition(self, t):
+    def __turn_x(self, t:float):
         ta = self.v / self.a
         tf = np.pi/(2*self.v) + self.v/self.a
         if t < 0:
@@ -85,8 +85,8 @@ class Cell:
             return (np.sqrt(np.pi)*c1)/np.sqrt(self.a) + (np.sqrt(2)*self.v_lin*np.cos(self.v*self.v/(2*self.a) + np.pi/4))/self.v + (self.v_lin*np.sqrt(np.pi)*(s2 - s3))/np.sqrt(self.a)
         return 0.375
         
-    def __turn_yposition(self, t):
-        return self.__turn_xposition(self.__turn_travel_time()-t)
+    def __turn_y(self, t:float):
+        return self.__turn_x(self.__turn_travel_time()-t)
 
     def __turn_travel_time(self):
         return np.pi/(2*self.v) + self.v/self.a

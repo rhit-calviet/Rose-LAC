@@ -2,9 +2,9 @@ import numpy as np
 
 class IMUObservation:
     def __init__(self, accel:np.ndarray, gyro:np.ndarray, accel_var:np.ndarray, gyro_var:np.ndarray):
-        self.accel = accel
+        self.accel = np.squeeze(accel)
         self.accel_var = accel_var
-        self.gyro = gyro
+        self.gyro = np.squeeze(gyro)
         self.gyro_var = gyro_var
 
 class OdometryObservation:
@@ -20,14 +20,14 @@ class OdometryObservation:
 
 class PointObservation:
     def __init__(self, world_coord:np.ndarray, local_coord:np.ndarray, var:float):
-        self.world_coord = world_coord
-        self.local_coord = local_coord
+        self.world_coord = np.squeeze(world_coord)
+        self.local_coord = np.squeeze(local_coord)
         self.var = var
 
 class DirectionObservation:
     def __init__(self, world_dir:np.ndarray, local_dir:np.ndarray, var:float):
-        self.world_dir = world_dir
-        self.local_dir = local_dir
+        self.world_dir = np.squeeze(world_dir)
+        self.local_dir = np.squeeze(local_dir)
         self.var = var
 
 class Observations:
