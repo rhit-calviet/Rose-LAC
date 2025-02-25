@@ -99,15 +99,6 @@ class InitialPosition:
         # return fiducial_world_coords
         return self.fiducials_tag_coordinates
     
-
-    def get_desired_path_start(self):
-        # Get desired path start position
-        return self.fiducials_tag_coordinates[69][:0] + 0.25, self.fiducials_tag_coordinates[69][:1] + 0.5
-    
-    def get_desired_path_end(self):
-        # Get desired path end position
-        return self.fiducials_tag_coordinates[69][:0] - 0.25, self.fiducials_tag_coordinates[69][:1] + 0.5
-    
     def get_fiducial_world_coordinates_with_corners(self):
         """Returns a dictionary with tag IDs mapped to both center and corners in world coordinates."""
         world_coords = {}
@@ -171,6 +162,4 @@ class InitialPosition:
             }
 
         return world_coords
-
-
 
