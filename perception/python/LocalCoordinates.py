@@ -9,14 +9,7 @@ class LocalCoordinates:
         self.image = image
         self.h, self.w = image.shape[:2]
         init_pos = InitialPosition()
-        self.FIDUCIAL_TAG_COORDINATES = init_pos.get_fiducial_world_coordinates()
-        
-        self.FIDUCIAL_TAG_IDS = { # Known AprilTag IDs for each fiducial
-            "A": [243, 71, 462, 37],   # IDs for Fiducial A
-            "B": [0, 3, 2, 1],         # IDs for Fiducial B
-            "C": [10, 11, 8, 9],       # IDs for Fiducial C
-            "D": [464, 459, 258, 5],   # IDs for Fiducial D
-            "Charger": [69]}          # ID for Charger Fiducial
+        self.FIDUCIAL_TAG_COORDINATES = init_pos.get_fiducial_world_coordinates_with_corners()
         
 
     def detect_fiducial(self, image):
@@ -30,7 +23,7 @@ class LocalCoordinates:
         
         # Detect AprilTags
         corners, ids, _ = detector.detectMarkers(gray)
-        if ids is None or len(ids) != 4:
+        if ids is None or len(ids) < 1:
             return None  # Require exactly 4 tags
         
         # Extract tag info (corners and IDs)
@@ -63,20 +56,28 @@ class LocalCoordinates:
 
     def get_coordinates(self):
         # Get detected fiducials
-        centers = self.get_fiducials(self.image)
+        points = self.get_fiducials(self.image)
 
-        if centers is None:
+        if points is None:
             return None  # No fiducials detected
 
         # Get corresponding 3D-2D point pairs
         object_points = []
         image_points = []
-        for tag_id, (x_pixel, y_pixel) in centers:
+        for tag_id, (x_pixel, y_pixel) in points:
             if tag_id in self.FIDUCIAL_TAG_COORDINATES:
-                # Use fiducial coordinates directly (assume they are in global frame)
-                global_point = self.FIDUCIAL_TAG_COORDINATES[tag_id]
-                object_points.append(global_point)
+                tag_data = self.FIDUCIAL_TAG_COORDINATES[tag_id]
+        
+                # Add center point
+                center_global = tag_data["center"]
+                object_points.append(center_global)
                 image_points.append([x_pixel, y_pixel])
+        
+                # Add corner points
+                corners_global = tag_data["corners"]
+                for corner_global in corners_global:
+                    object_points.append(corner_global)
+                    image_points.append([x_pixel, y_pixel]) 
 
         # Calculate camera matrix (assuming 70° horizontal FOV)
         fov_x = 1.22  # radians (70 degrees)

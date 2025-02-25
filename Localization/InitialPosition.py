@@ -3,6 +3,8 @@ import numpy as np
 
 
 class InitialPosition:
+    
+    TAG_SIZE = 0.339
 
     def __init__(self, rover_transform, lander_relative_transform):
         # Known tag coordinates (in lander's local frame F_L)
@@ -105,5 +107,70 @@ class InitialPosition:
     def get_desired_path_end(self):
         # Get desired path end position
         return self.fiducials_tag_coordinates[69][:0] - 0.25, self.fiducials_tag_coordinates[69][:1] + 0.5
+    
+    def get_fiducial_world_coordinates_with_corners(self):
+        """Returns a dictionary with tag IDs mapped to both center and corners in world coordinates."""
+        world_coords = {}
+        half_size = self.TAG_SIZE / 2
+
+        # Define the rotation angles for each fiducial group
+        group_rotations = {
+            "A": np.deg2rad(135),
+            "B": np.deg2rad(45),
+            "C": np.deg2rad(315),
+            "D": np.deg2rad(225)
+        }
+
+        # Assign tags to their respective groups
+        group_mapping = {
+            "A": [243, 71, 462, 37],
+            "B": [3, 1, 2, 0],
+            "C": [10, 11, 9, 8],
+            "D": [464, 459, 258, 5]
+        }
+
+        # Map each tag ID to its corresponding rotation angle
+        tag_to_rotation = {}
+        for group, tags in group_mapping.items():
+            for tag_id in tags:
+                tag_to_rotation[tag_id] = group_rotations[group]
+
+        for tag_id, (cx, cy, cz) in self.fiducials_tag_coordinates.items():
+            # Center in world coordinates
+            center_world = (cx, cy, cz)
+
+            # Determine rotation angle for this tag
+            rotation_angle = tag_to_rotation.get(tag_id, 0)  # Default to 0 if not found
+
+            # Rotation matrix for the XY plane
+            cos_a = np.cos(rotation_angle)
+            sin_a = np.sin(rotation_angle)
+            rotation_matrix = np.array([
+                [cos_a, -sin_a],
+                [sin_a, cos_a]
+            ])
+
+            # Corners in the local tag frame (relative to the center)
+            local_corners = np.array([
+                [-half_size, -half_size],  # Top-left
+                [half_size, -half_size],   # Top-right
+                [-half_size, half_size],   # Bottom-left
+                [half_size, half_size]     # Bottom-right
+            ])
+
+            # Rotate corners in 2D space
+            rotated_corners = np.dot(local_corners, rotation_matrix.T)
+
+            # Translate to world coordinates (keeping the original Z coordinate)
+            world_corners = [(cx + x, cy + y, cz) for x, y in rotated_corners]
+
+            # Add both center and corners to the dictionary
+            world_coords[tag_id] = {
+                "center": center_world,
+                "corners": world_corners
+            }
+
+        return world_coords
+
 
 
